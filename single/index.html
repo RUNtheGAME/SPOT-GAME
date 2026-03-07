@@ -1186,7 +1186,7 @@ function positionHintButton(){
  if(gameEl){
   const rect=gameEl.getBoundingClientRect();
   if(rect.height>0){
-   nextTop=rect.bottom-7;
+   nextTop=rect.bottom+5;
   }
  }
  const safeTop=Math.max(0,Math.min(nextTop,maxTop));
@@ -2405,8 +2405,7 @@ function launchConfetti(){
 }
 
 function updateStatus(){
- const totalMiniGames=Math.max(1,miniGames.length);
- document.getElementById('status').innerText="משחקון "+(currentMiniGameIndex+1)+"/"+totalMiniGames+" • נמצאו: "+found.length+"/"+differences.length;
+ document.getElementById('status').innerText=getMiniGameName(currentMiniGameIndex);
  const lostHearts=Math.min(heartsEls.length,Math.floor(mistakes/3));
  heartsEls.forEach((heart,i)=>heart.classList.toggle('lost',i<lostHearts));
  starsEls.forEach((star,i)=>star.classList.toggle('found',paintedStars.has(i)));
