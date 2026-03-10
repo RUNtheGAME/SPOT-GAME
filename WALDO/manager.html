@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Waldo Hunt - ניהול</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Assistant:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <main class="app">
+      <header class="hero">
+        <h1>Waldo Hunt</h1>
+        <p>ניהול משחק: העלאת תמונה וסימון דמויות חבויות.</p>
+        <a class="top-link" href="game.html">מעבר למסך משחק</a>
+      </header>
+
+      <section class="layout">
+        <aside class="panel">
+          <label class="file-upload">
+            <span>העלה תמונה</span>
+            <input id="imageInput" type="file" accept="image/*" />
+            <small class="hint">נדרש גודל תמונה: 1080x1800 פיקסלים</small>
+          </label>
+
+          <div class="box">
+            <h2>הגדרת דמויות</h2>
+            <p class="hint">כתוב שם לדמות, לחץ "הוסף יעד", ואז לחץ על המיקום בתמונה.</p>
+            <input id="targetName" type="text" placeholder="שם דמות (למשל: וולדו)" />
+
+            <label class="inline-label">
+              <span>טולרנס זיהוי</span>
+              <input id="radiusInput" type="range" min="1.5" max="10" step="0.5" value="4" />
+              <strong><span id="radiusLabel">4</span>%</strong>
+            </label>
+
+            <div class="actions">
+              <button id="armTargetBtn" type="button">הוסף יעד בלחיצה</button>
+              <button id="clearBtn" type="button" class="ghost">איפוס הכל</button>
+            </div>
+          </div>
+
+          <div class="box">
+            <h2>ייצוא חבילת משחק</h2>
+            <p class="hint">שמור דמויות + תמונה לטעינה בקובץ המשחק.</p>
+            <div class="actions">
+              <button id="saveLocalBtn" type="button">שמירה בדפדפן</button>
+              <button id="exportBtn" type="button" class="ghost">הורדת קובץ JSON</button>
+            </div>
+          </div>
+
+          <div class="box">
+            <h2>רשימת דמויות</h2>
+            <div id="progress" class="progress">0 / 0 יעדים</div>
+            <ul id="targetList"></ul>
+          </div>
+
+          <p id="status" class="status">ממתין להעלאת תמונה.</p>
+        </aside>
+
+        <section class="board">
+          <canvas id="managerCanvas"></canvas>
+        </section>
+      </section>
+    </main>
+
+    <script src="manager.js"></script>
+  </body>
+</html>
