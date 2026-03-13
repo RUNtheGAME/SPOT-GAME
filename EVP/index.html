@@ -13,7 +13,11 @@
         margin: 0;
         min-height: 100vh;
         font-family: "Assistant", "Heebo", sans-serif;
-        background: #ff3344;
+        background-color: #ff3344;
+        background-image: url("redback.png");
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
         display: grid;
         place-items: center;
         padding: 24px;
@@ -35,18 +39,37 @@
         pointer-events: none;
       }
 
+      #openScreen .open-stack {
+        display: grid;
+        place-items: center;
+        gap: 20px;
+      }
+
       #openScreen .open-logo {
         display: block;
         width: min(92vw, 760px);
-        max-height: 88vh;
+        max-height: 78vh;
         height: auto;
         object-fit: contain;
         user-select: none;
         -webkit-user-drag: none;
       }
 
-      #openScreen #tailGif {
+      #openScreen .open-progress {
         position: absolute;
+        left: 50%;
+        top: calc(50% + 80px);
+        transform: translateX(-50%);
+        display: block;
+        width: min(64vw, 320px);
+        height: auto;
+        z-index: 3;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      #homeTail {
+        position: fixed;
         left: 0;
         bottom: max(8px, env(safe-area-inset-bottom));
         width: clamp(238px, 49vw, 459px);
@@ -61,47 +84,51 @@
         width: min(92vw, 560px);
         display: grid;
         gap: 12px;
+        place-items: center;
       }
 
       .game-btn {
         border: 0;
-        border-radius: 14px;
-        padding: 14px 16px;
-        color: #fff;
-        font-size: 1rem;
-        font-weight: 700;
+        background: transparent;
+        padding: 0;
         cursor: pointer;
-        text-align: right;
+        line-height: 0;
       }
 
-      .game-btn:hover {
-        filter: brightness(1.06);
+      .game-btn img {
+        display: block;
+        width: min(84vw, 360px);
+        height: auto;
+        user-select: none;
+        -webkit-user-drag: none;
       }
 
-      .game-btn.puzzle {
-        background: linear-gradient(120deg, #0f766e, #14b8a6);
-      }
-
-      .game-btn.coins {
-        background: linear-gradient(120deg, #b45309, #f59e0b);
-      }
-
-      .game-btn.waldo {
-        background: linear-gradient(120deg, #be123c, #f43f5e);
+      .game-btn:active {
+        transform: translateY(1px);
       }
     </style>
   </head>
   <body>
     <div id="openScreen" aria-label="מסך פתיחה">
-      <img class="open-logo" src="LOGO.svg" alt="פתיחה" />
-      <img id="tailGif" src="tail2.gif" alt="" aria-hidden="true" />
+      <div class="open-stack">
+        <img class="open-logo" src="LOGO.svg" alt="פתיחה" />
+        <img class="open-progress" src="progress.gif" alt="" aria-hidden="true" />
+      </div>
     </div>
 
     <main class="games" aria-label="בחירת משחק">
-      <button class="game-btn puzzle" onclick="location.href='3x3puzzle.html'">פאזל 3x3</button>
-      <button class="game-btn coins" onclick="location.href='coins.html'">חפש את ההבדלים</button>
-      <button class="game-btn waldo" onclick="location.href='gameWALD.html'">Waldo Hunt</button>
+      <button class="game-btn" onclick="location.href='coins.html'" aria-label="חפש את ההבדלים">
+        <img src="butt1.png" alt="חפש את ההבדלים" />
+      </button>
+      <button class="game-btn" onclick="location.href='3x3puzzle.html'" aria-label="פאזל 3x3">
+        <img src="butt2.png" alt="פאזל 3x3" />
+      </button>
+      <button class="game-btn" onclick="location.href='gameWALD.html'" aria-label="Waldo Hunt">
+        <img src="butt3.png" alt="Waldo Hunt" />
+      </button>
     </main>
+
+    <img id="homeTail" src="tail2.gif" alt="" aria-hidden="true" />
 
     <script>
       (() => {
@@ -114,7 +141,7 @@
           return;
         }
 
-        const OPEN_SCREEN_MS = 6000;
+        const OPEN_SCREEN_MS = 4500;
         let closed = false;
 
         function closeOpenScreen() {
