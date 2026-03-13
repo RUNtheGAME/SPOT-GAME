@@ -82,9 +82,11 @@
 
       .games {
         width: min(92vw, 560px);
+        max-height: 70vh;
         display: grid;
         gap: 12px;
         place-items: center;
+        align-content: center;
       }
 
       .game-btn {
@@ -97,8 +99,10 @@
 
       .game-btn img {
         display: block;
-        width: min(84vw, 360px);
+        width: min(70vw, 320px);
+        max-height: calc((70vh - 24px)/3);
         height: auto;
+        object-fit: contain;
         user-select: none;
         -webkit-user-drag: none;
       }
