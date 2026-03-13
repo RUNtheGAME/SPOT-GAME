@@ -164,7 +164,7 @@ body.force-portrait #portraitOnlyOverlay{display:flex!important}
 </div>
 
 
-<div id="startScreen">
+<div id="startScreen" class="hidden">
   <div class="startCard">
     <div class="mediaWrap"><img src="backneto.png" alt="Time To Play"></div>
     <img id="startOverlayGif" src="timetoplay3b.gif" alt="Time To Play">
@@ -1118,6 +1118,26 @@ function tryUnlockAudio(unlockFn){
  try{unlockFn();}catch(_){ }
 }
 
+function unlockAllGameAudio(){
+ // iOS can throw sync media errors; never block gameplay on audio unlock.
+ tryUnlockAudio(unlockCorrectTapAudio);
+ tryUnlockAudio(unlockWinAudio);
+ tryUnlockAudio(unlockOopsAudio);
+ tryUnlockAudio(unlockCoinAudio);
+}
+
+let firstInteractionAudioUnlockBound=false;
+function bindFirstInteractionAudioUnlock(){
+ if(firstInteractionAudioUnlockBound)return;
+ firstInteractionAudioUnlockBound=true;
+ const unlockOnInteraction=()=>{
+  unlockAllGameAudio();
+ };
+ window.addEventListener('pointerdown',unlockOnInteraction,{once:true,passive:true});
+ window.addEventListener('touchend',unlockOnInteraction,{once:true,passive:true});
+ window.addEventListener('keydown',unlockOnInteraction,{once:true});
+}
+
 function renderGallery(){
  if(!galleryGrid)return;
  galleryGrid.innerHTML='';
@@ -1328,20 +1348,7 @@ function updateSingleEndName(){
 }
 
 function showSingleEndScreen(){
- if(!singleEndScreen)return;
- updateSingleEndName();
- stopConfetti();
- if(finishBackdrop){
-  finishBackdrop.classList.remove('active');
-  finishBackdrop.classList.add('hidden');
- }
- if(finishPopup){
-  finishPopup.classList.remove('active');
-  finishPopup.classList.add('hidden');
- }
- if(appEl)appEl.classList.add('hidden');
- setHomeButtonVisibility(false);
- singleEndScreen.classList.remove('hidden');
+ window.location.href='index.html?home=1';
 }
 
 function hideSingleEndScreen(){
@@ -1516,10 +1523,7 @@ if(startBtn){
   startActionLock=true;
   try{
   // iOS can throw sync media errors; never block navigation on audio unlock.
-  tryUnlockAudio(unlockCorrectTapAudio);
-  tryUnlockAudio(unlockWinAudio);
-  tryUnlockAudio(unlockOopsAudio);
-  tryUnlockAudio(unlockCoinAudio);
+  unlockAllGameAudio();
   pendingStartCoinIntro=true;
    if(miniGames.length>1){
     const ua=(navigator&&navigator.userAgent)||'';
@@ -1546,22 +1550,7 @@ if(startBtn){
 
 if(homeBtn){
  homeBtn.onclick=()=>{
-  if(miniGames.length<=1){
-   hideFinalScoresScreen();
-   resetRoundState();
-   if(galleryScreen){
-    galleryScreen.classList.remove('morph-in');
-    galleryScreen.classList.add('hidden');
-   }
-   if(appEl)appEl.classList.add('hidden');
-   if(startScreenEl){
-    startScreenEl.classList.remove('hidden');
-    startScreenEl.classList.remove('morph-out');
-   }
-   setHomeButtonVisibility(false);
-   return;
-  }
-  goToGalleryFromGame();
+  window.location.href='index.html?home=1';
  };
 }
 
@@ -1578,18 +1567,7 @@ if(finalScoresHomeBtn){
 
 if(singleEndHomeBtn){
  singleEndHomeBtn.onclick=()=>{
-  hideSingleEndScreen();
-  resetRoundState();
-  if(galleryScreen){
-   galleryScreen.classList.remove('morph-in');
-   galleryScreen.classList.add('hidden');
-  }
-  if(appEl)appEl.classList.add('hidden');
-  if(startScreenEl){
-   startScreenEl.classList.remove('hidden');
-   startScreenEl.classList.remove('morph-out');
-  }
-  setHomeButtonVisibility(false);
+  window.location.href='index.html?home=1';
  };
 }
 
@@ -2666,7 +2644,7 @@ if(nextMiniGameBtn){
  nextMiniGameBtn.onclick=()=>{
   if(isInputLocked())return;
   if(miniGames.length<=1){
-   showSingleEndScreen();
+   window.location.href='index.html?home=1';
    return;
   }
   loadMiniGame(getNextMiniGameIndex());
@@ -2680,14 +2658,10 @@ if(buyHintBtn){
 if(playerGateEl)playerGateEl.classList.add('hidden');
 setParticipantUiReady(true);
 resetParticipantSession();
-loadMiniGame(0);
-if(startScreenEl){
- startScreenEl.classList.remove('hidden');
- startScreenEl.classList.remove('morph-out');
-}
-if(galleryScreen)galleryScreen.classList.add('hidden');
-if(appEl)appEl.classList.add('hidden');
-setHomeButtonVisibility(false);
+bindFirstInteractionAudioUnlock();
+unlockAllGameAudio();
+pendingStartCoinIntro=true;
+startMiniGame(0);
 updatePortraitOnlyMode();
 </script>
 </body>
