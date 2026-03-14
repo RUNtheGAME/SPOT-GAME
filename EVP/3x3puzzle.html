@@ -285,24 +285,28 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         if (winAudioUnlocked) return;
 
         try {
-          winAudio.muted = true;
+          const previousVolume = typeof winAudio.volume === "number" ? winAudio.volume : 1;
+          winAudio.muted = false;
+          winAudio.volume = 0;
           const p = winAudio.play();
 
           if (p && typeof p.then === "function") {
             p.then(() => {
               winAudio.pause();
               winAudio.currentTime = 0;
-              winAudio.muted = false;
+              winAudio.volume = previousVolume;
               winAudioUnlocked = true;
             }).catch(() => {
-              winAudio.muted = false;
+              winAudio.volume = previousVolume;
             });
           } else {
-            winAudio.muted = false;
+            winAudio.pause();
+            winAudio.currentTime = 0;
+            winAudio.volume = previousVolume;
             winAudioUnlocked = true;
           }
         } catch (_) {
-          winAudio.muted = false;
+          winAudio.volume = 1;
         }
       }
 
@@ -543,7 +547,6 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         if (winDelayTimer) {
           clearTimeout(winDelayTimer);
         }
-
         winDelayTimer = setTimeout(() => {
           playWinSound();
           showFinishPopup();
