@@ -283,30 +283,20 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
       function unlockWinAudio() {
         if (winAudioUnlocked) return;
-
-        try {
-          const previousVolume = typeof winAudio.volume === "number" ? winAudio.volume : 1;
-          winAudio.muted = false;
-          winAudio.volume = 0;
-          const p = winAudio.play();
-
-          if (p && typeof p.then === "function") {
-            p.then(() => {
-              winAudio.pause();
-              winAudio.currentTime = 0;
-              winAudio.volume = previousVolume;
-              winAudioUnlocked = true;
-            }).catch(() => {
-              winAudio.volume = previousVolume;
-            });
-          } else {
+        winAudio.muted = true;
+        const p = winAudio.play();
+        if (p && typeof p.then === "function") {
+          p.then(() => {
             winAudio.pause();
             winAudio.currentTime = 0;
-            winAudio.volume = previousVolume;
+            winAudio.muted = false;
             winAudioUnlocked = true;
-          }
-        } catch (_) {
-          winAudio.volume = 1;
+          }).catch(() => {
+            winAudio.muted = false;
+          });
+        } else {
+          winAudio.muted = false;
+          winAudioUnlocked = true;
         }
       }
 
@@ -413,24 +403,11 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
       function playWinSound() {
         try {
+          if (!winAudioUnlocked) unlockWinAudio();
           winAudio.currentTime = 0;
           winAudio.volume = 0.85;
           const p = winAudio.play();
-          if (p && typeof p.catch === "function") {
-            p.catch(() => {
-              unlockWinAudio();
-              setTimeout(() => {
-                try {
-                  winAudio.currentTime = 0;
-                  winAudio.volume = 0.85;
-                  const retry = winAudio.play();
-                  if (retry && typeof retry.catch === "function") {
-                    retry.catch(() => {});
-                  }
-                } catch (_) {}
-              }, 60);
-            });
-          }
+          if (p && typeof p.catch === "function") p.catch(() => {});
         } catch (_) {}
       }
 
@@ -548,6 +525,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
           clearTimeout(winDelayTimer);
         }
         winDelayTimer = setTimeout(() => {
+          playWinSound();
           showFinishPopup();
           launchConfetti();
           winDelayTimer = null;
@@ -596,10 +574,6 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         }
 
         [board[position], board[emptyPos]] = [board[emptyPos], board[position]];
-
-        if (isSolved(board)) {
-          playWinSound();
-        }
 
         render();
       }
