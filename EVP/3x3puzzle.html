@@ -278,6 +278,46 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       const winAudio = new Audio("victory.wav");
       winAudio.preload = "auto";
       winAudio.setAttribute("playsinline", "");
+      let winAudioUnlocked = false;
+      let firstInteractionAudioUnlockBound = false;
+
+      function unlockWinAudio() {
+        if (winAudioUnlocked) return;
+
+        try {
+          winAudio.muted = true;
+          const p = winAudio.play();
+
+          if (p && typeof p.then === "function") {
+            p.then(() => {
+              winAudio.pause();
+              winAudio.currentTime = 0;
+              winAudio.muted = false;
+              winAudioUnlocked = true;
+            }).catch(() => {
+              winAudio.muted = false;
+            });
+          } else {
+            winAudio.muted = false;
+            winAudioUnlocked = true;
+          }
+        } catch (_) {
+          winAudio.muted = false;
+        }
+      }
+
+      function bindFirstInteractionAudioUnlock() {
+        if (firstInteractionAudioUnlockBound) return;
+        firstInteractionAudioUnlockBound = true;
+
+        const unlockOnInteraction = () => {
+          unlockWinAudio();
+        };
+
+        window.addEventListener("pointerdown", unlockOnInteraction, { once: true, passive: true });
+        window.addEventListener("touchend", unlockOnInteraction, { once: true, passive: true });
+        window.addEventListener("keydown", unlockOnInteraction, { once: true });
+      }
 
       function createSolvedBoard() {
         return Array.from({ length: ROWS * COLS }, (_, i) => i);
@@ -373,7 +413,19 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
           winAudio.volume = 0.85;
           const p = winAudio.play();
           if (p && typeof p.catch === "function") {
-            p.catch(() => {});
+            p.catch(() => {
+              unlockWinAudio();
+              setTimeout(() => {
+                try {
+                  winAudio.currentTime = 0;
+                  winAudio.volume = 0.85;
+                  const retry = winAudio.play();
+                  if (retry && typeof retry.catch === "function") {
+                    retry.catch(() => {});
+                  }
+                } catch (_) {}
+              }, 60);
+            });
           }
         } catch (_) {}
       }
@@ -533,6 +585,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       }
 
       function onTileClick(position) {
+        unlockWinAudio();
         if (gameFinished) return;
 
         const emptyPos = board.indexOf(LAST_INDEX);
@@ -556,6 +609,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         render();
       }
 
+      bindFirstInteractionAudioUnlock();
       resetBtn.addEventListener("click", startPuzzle);
       homeBtn.addEventListener("click", () => {
         window.location.href = "index.html?home=1";
