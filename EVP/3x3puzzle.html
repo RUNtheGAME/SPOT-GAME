@@ -533,8 +533,8 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         if (winDelayTimer) {
           clearTimeout(winDelayTimer);
         }
-        playWinSound();
         winDelayTimer = setTimeout(() => {
+          playWinSound();
           showFinishPopup();
           launchConfetti();
           winDelayTimer = null;
