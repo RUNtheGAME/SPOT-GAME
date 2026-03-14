@@ -548,7 +548,6 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
           clearTimeout(winDelayTimer);
         }
         winDelayTimer = setTimeout(() => {
-          playWinSound();
           showFinishPopup();
           launchConfetti();
           winDelayTimer = null;
@@ -597,6 +596,11 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         }
 
         [board[position], board[emptyPos]] = [board[emptyPos], board[position]];
+
+        if (isSolved(board)) {
+          playWinSound();
+        }
+
         render();
       }
 
