@@ -278,6 +278,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       const winAudio = new Audio("victory.wav");
       winAudio.preload = "auto";
       winAudio.setAttribute("playsinline", "");
+      winAudio.load();
       let winAudioUnlocked = false;
       let firstInteractionAudioUnlockBound = false;
 
@@ -524,8 +525,8 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         if (winDelayTimer) {
           clearTimeout(winDelayTimer);
         }
+        playWinSound();
         winDelayTimer = setTimeout(() => {
-          playWinSound();
           showFinishPopup();
           launchConfetti();
           winDelayTimer = null;
