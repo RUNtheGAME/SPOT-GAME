@@ -404,12 +404,21 @@ let zoomOffsetX=0;
 let zoomOffsetY=0;
 const ZOOM_MIN=1;
 const ZOOM_MAX=3;
+const PAN_MOVE_THRESHOLD=6;
+const ZOOM_RESET_MS=320;
 const pinchPointers=new Map();
 let pinchStartDistance=0;
 let pinchStartCenter=null;
 let pinchStartScale=1;
 let pinchStartOffsetX=0;
 let pinchStartOffsetY=0;
+let panPointerId=null;
+let panStartX=0;
+let panStartY=0;
+let panStartOffsetX=0;
+let panStartOffsetY=0;
+let touchGestureWasPan=false;
+let zoomResetTimer=null;
 let oopsResetTimer=null;
 const finishBackdrop=document.getElementById('finishBackdrop');
 const oopsBackdrop=document.getElementById('oopsBackdrop');
@@ -1887,11 +1896,48 @@ function applyZoomTransform(){
  if(z2)z2.style.transform=tr;
 }
 
+function clearZoomResetTransition(){
+ if(zoomResetTimer){
+  clearTimeout(zoomResetTimer);
+  zoomResetTimer=null;
+ }
+ [z1,z2].forEach(layer=>{
+  if(!layer)return;
+  layer.style.transition='';
+ });
+}
+
+function smoothResetImageZoom(){
+ if(zoomScale<=ZOOM_MIN&&Math.abs(zoomOffsetX)<0.01&&Math.abs(zoomOffsetY)<0.01){
+  resetImageZoom();
+  return;
+ }
+ pinchPointers.clear();
+ panPointerId=null;
+ touchGestureWasPan=false;
+ pinchStartDistance=0;
+ pinchStartCenter=null;
+ [z1,z2].forEach(layer=>{
+  if(!layer)return;
+  layer.style.transition='transform '+ZOOM_RESET_MS+'ms cubic-bezier(.22,.61,.36,1)';
+ });
+ zoomScale=1;
+ zoomOffsetX=0;
+ zoomOffsetY=0;
+ applyZoomTransform();
+ zoomResetTimer=setTimeout(()=>{
+  clearZoomResetTransition();
+ },ZOOM_RESET_MS+34);
+}
+
 function resetImageZoom(){
+ clearZoomResetTransition();
  zoomScale=1;
  zoomOffsetX=0;
  zoomOffsetY=0;
  pinchPointers.clear();
+ panPointerId=null;
+ touchGestureWasPan=false;
  pinchStartDistance=0;
  pinchStartCenter=null;
  applyZoomTransform();
@@ -1932,6 +1978,39 @@ function updatePinch(){
  zoomOffsetX=clamped.x;
  zoomOffsetY=clamped.y;
  applyZoomTransform();
+}
+
+function beginSingleFingerPan(pointerId,x,y){
+ if(zoomScale<=ZOOM_MIN){
+  panPointerId=null;
+  return;
+ }
+ panPointerId=pointerId;
+ panStartX=x;
+ panStartY=y;
+ panStartOffsetX=zoomOffsetX;
+ panStartOffsetY=zoomOffsetY;
+ touchGestureWasPan=false;
+}
+
+function updateSingleFingerPan(pointerId,x,y){
+ if(panPointerId!==pointerId||zoomScale<=ZOOM_MIN)return false;
+ const dx=x-panStartX;
+ const dy=y-panStartY;
+ if(Math.hypot(dx,dy)>=PAN_MOVE_THRESHOLD){
+  touchGestureWasPan=true;
+ }
+ const clamped=clampZoomOffsets(zoomScale,panStartOffsetX+dx,panStartOffsetY+dy);
+ zoomOffsetX=clamped.x;
+ zoomOffsetY=clamped.y;
+ applyZoomTransform();
+ return true;
+}
+
+function endSingleFingerPan(pointerId){
+ if(panPointerId===pointerId){
+  panPointerId=null;
+ }
 }
 
 function playWinSound(){
@@ -2401,23 +2480,43 @@ function processTap(img,clientX,clientY){
 
 function onImagePointerDown(e){
  if(e.pointerType!=='touch')return;
+ clearZoomResetTransition();
  activeTouchPointers.add(e.pointerId);
  pinchPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(activeTouchPointers.size>1){
   touchGestureHadMultiple=true;
+  endSingleFingerPan(e.pointerId);
   e.preventDefault();
  }
- if(pinchPointers.size===2)beginPinch();
+ if(pinchPointers.size===2){
+  panPointerId=null;
+  beginPinch();
+ }else if(pinchPointers.size===1){
+  beginSingleFingerPan(e.pointerId,e.clientX,e.clientY);
+ }
 }
 
 function onImagePointerUp(e){
  const img=e.currentTarget;
  if(e.pointerType==='touch'){
-  const ignoreTouch=touchGestureHadMultiple||activeTouchPointers.size>1||pinchPointers.size>1;
+  const ignoreTouch=touchGestureHadMultiple||touchGestureWasPan||activeTouchPointers.size>1||pinchPointers.size>1;
+  endSingleFingerPan(e.pointerId);
   activeTouchPointers.delete(e.pointerId);
   pinchPointers.delete(e.pointerId);
-  if(pinchPointers.size===2)beginPinch();
-  if(activeTouchPointers.size===0)touchGestureHadMultiple=false;
+  if(pinchPointers.size===2){
+   beginPinch();
+  }else if(pinchPointers.size===1){
+   const remaining=pinchPointers.entries().next().value;
+   if(remaining){
+    const [remainingId,point]=remaining;
+    beginSingleFingerPan(remainingId,point.x,point.y);
+   }
+  }
+  if(activeTouchPointers.size===0){
+   touchGestureHadMultiple=false;
+   touchGestureWasPan=false;
+   panPointerId=null;
+  }
   if(ignoreTouch)return;
  }
  processTap(img,e.clientX,e.clientY);
@@ -2429,16 +2528,35 @@ function onImagePointerMove(e){
  pinchPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(pinchPointers.size>=2){
   e.preventDefault();
+  touchGestureHadMultiple=true;
+  panPointerId=null;
   updatePinch();
+  return;
+ }
+ if(updateSingleFingerPan(e.pointerId,e.clientX,e.clientY)){
+  e.preventDefault();
  }
 }
 
 function onImagePointerCancel(e){
  if(e.pointerType!=='touch')return;
+ endSingleFingerPan(e.pointerId);
  activeTouchPointers.delete(e.pointerId);
  pinchPointers.delete(e.pointerId);
- if(pinchPointers.size===2)beginPinch();
- if(activeTouchPointers.size===0)touchGestureHadMultiple=false;
+ if(pinchPointers.size===2){
+  beginPinch();
+ }else if(pinchPointers.size===1){
+  const remaining=pinchPointers.entries().next().value;
+  if(remaining){
+   const [remainingId,point]=remaining;
+   beginSingleFingerPan(remainingId,point.x,point.y);
+  }
+ }
+ if(activeTouchPointers.size===0){
+  touchGestureHadMultiple=false;
+  touchGestureWasPan=false;
+  panPointerId=null;
+ }
 }
 
 ['i1','i2'].forEach(id=>{
