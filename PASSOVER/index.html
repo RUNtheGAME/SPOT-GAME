@@ -1488,8 +1488,6 @@ function showNextMiniGameButton(options={}){
 
 function resetRoundState(){
  found=[];
- mistakes=0;
- coins=INITIAL_COINS;
  gameFinished=false;
  winEffectsPlayed=false;
  nextStarSlot=0;
@@ -2471,13 +2469,12 @@ if(resetBtn){
 }
 if(nextMiniGameBtn){
  nextMiniGameBtn.onclick=()=>{
-  if(isInputLocked())return;
   const action=nextMiniGameBtn.dataset.action||'next';
   if(action==='gallery'){
    goToGalleryFromGame();
    return;
   }
-  loadMiniGame(getNextMiniGameIndex());
+  startMiniGame(getNextMiniGameIndex());
  };
 }
 registerGroupServiceWorker().catch(()=>{});
