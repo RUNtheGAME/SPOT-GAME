@@ -523,6 +523,7 @@ let participantJoined=false;
 let roundStartedAt=0;
 let sessionStartedAt=0;
 let finalResultsSubmitted=false;
+let finalResultsPendingGreeting=false;
 let submittingResults=false;
 let groupSessionId=resolveGroupSessionId();
 let participantId=resolveGroupPlayerId();
@@ -817,11 +818,19 @@ function rowRepresentsFinishedPlayer(row){
 }
 
 function handleWinnerRealtimeRow(row){
- if(!row||!rowRepresentsFinishedPlayer(row))return;
+ if(!row)return;
  const rowSession=String(row.session_id||'').trim();
  if(groupSessionId&&rowSession&&rowSession!==groupSessionId)return;
- // Validate against the full table so only the first finisher is announced.
- pollLiveWinner();
+ const winnerName=String(row.name||'').trim();
+ if(!winnerName)return;
+ if(normalizeIsFinal(row.is_final)){
+  // Announce directly from the same realtime row for near-simultaneous push on all devices.
+  announceLiveWinner(winnerName);
+  return;
+ }
+ if(rowRepresentsFinishedPlayer(row)){
+  pollLiveWinner();
+ }
 }
 
 function stopLiveWinnerRealtime(){
@@ -912,15 +921,20 @@ async function postParticipantResults(final=false){
  if(!participantJoined||!participantName||submittingResults)return;
  submittingResults=true;
  setSyncStatus('מסנכרן...',false,true);
+ const isFinalSubmission=Boolean(final);
+ let completedRoundsForPayload=participantStats.completedRounds;
+ if(finalResultsPendingGreeting&&!isFinalSubmission){
+  completedRoundsForPayload=Math.min(completedRoundsForPayload,Math.max(0,miniGames.length-1));
+ }
  const basePayload={
   name:participantName,
   total_mistakes:participantStats.totalMistakes,
   total_successes:participantStats.totalSuccesses,
-  completed_rounds:participantStats.completedRounds,
+  completed_rounds:completedRoundsForPayload,
   total_mini_games:miniGames.length,
   total_game_ms:participantStats.totalGameMs,
   last_round_ms:participantStats.lastRoundMs,
-  is_final:Boolean(final),
+  is_final:isFinalSubmission,
   current_mini_game:getMiniGameName(currentMiniGameIndex),
   updated_at:new Date().toISOString()
  };
@@ -1013,6 +1027,7 @@ function resetParticipantSession(){
  };
  completedMiniGames.clear();
  finalResultsSubmitted=false;
+ finalResultsPendingGreeting=false;
  liveWinnerName='';
  sessionWinnerName='';
  winnerScreenShownOnce=false;
@@ -2286,6 +2301,16 @@ function hideEndGreetingPopup(){
  }
 }
 
+function releasePendingFinalResults(){
+ if(!finalResultsPendingGreeting||finalResultsSubmitted)return;
+ finalResultsPendingGreeting=false;
+ finalResultsSubmitted=true;
+ submitParticipantResults(true);
+ // Realtime row is the primary synchronized trigger; polling stays as delayed fallback.
+ setTimeout(()=>pollLiveWinner(),2200);
+ setTimeout(()=>pollLiveWinner(),4200);
+}
+
 function showEndGreetingPopup(){
  if(!endGreetingPopup)return;
  if(endGreetingBackdrop){
@@ -2298,6 +2323,7 @@ function showEndGreetingPopup(){
  endGreetingPopup.classList.remove('active');
  void endGreetingPopup.offsetWidth;
  endGreetingPopup.classList.add('active');
+ releasePendingFinalResults();
 }
 
 function maybeCelebrateWin(){
@@ -2314,14 +2340,9 @@ function maybeCelebrateWin(){
  }
  const isFinalRound=!finalResultsSubmitted&&miniGames.length>0&&completedMiniGames.size>=miniGames.length;
  if(isFinalRound){
-  finalResultsSubmitted=true;
-  submitParticipantResults(true);
-  // Do not self-declare winner; verify first finisher from shared scores table.
-  setTimeout(()=>pollLiveWinner(),180);
-  setTimeout(()=>pollLiveWinner(),900);
- }else{
-  submitParticipantResults(false);
+  finalResultsPendingGreeting=true;
  }
+ submitParticipantResults(false);
  if(finishConfettiTimer){
   clearTimeout(finishConfettiTimer);
   finishConfettiTimer=null;
