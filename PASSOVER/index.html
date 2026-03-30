@@ -128,6 +128,13 @@ img.main{width:100%;height:100%;object-fit:contain;touch-action:none}
 #finishPopup{position:fixed;left:50%;top:50%;width:min(88.4vw,468px);max-width:90vw;opacity:0;transform:translate(-50%,-50%) scale(.75);z-index:10045;filter:drop-shadow(0 10px 26px rgba(0,0,0,.8));pointer-events:none}
 #finishPopup.active{opacity:1;animation:oopsBounce 1.1s cubic-bezier(.22,.61,.36,1) forwards}
 #finishPopupImg{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
+#endGreetingBackdrop{position:fixed;inset:0;background:transparent;z-index:10052;pointer-events:none;opacity:0;transition:opacity .2s ease}
+#endGreetingBackdrop.active{opacity:1;pointer-events:auto}
+#endGreetingPopup{position:fixed;left:50%;top:50%;width:min(88.4vw,468px);max-width:90vw;opacity:0;transform:translate(-50%,-50%) scale(.75);z-index:10055;filter:drop-shadow(0 10px 26px rgba(0,0,0,.8));pointer-events:none}
+#endGreetingPopup.active{opacity:1;animation:oopsBounce 1.1s cubic-bezier(.22,.61,.36,1) forwards}
+#endGreetingBtn{display:block;width:100%;border:0;background:transparent;padding:0;cursor:pointer;pointer-events:auto}
+#endGreetingBtn img{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
+#endGreetingBtn:active{transform:translateY(1px)}
 #oopsPopup{position:fixed;left:50%;top:50%;width:min(88.4vw,468px);max-width:90vw;pointer-events:none;opacity:0;transform:translate(-50%,-50%) scale(.75);z-index:10050;filter:drop-shadow(0 10px 26px rgba(0,0,0,.8))}
 #oopsPopup.active{opacity:1;animation:oopsBounce 1.1s cubic-bezier(.22,.61,.36,1) forwards}
 #oopsTimer{position:fixed;left:50%;top:50%;width:clamp(96px,22vw,140px);height:clamp(96px,22vw,140px);transform:translate(-50%,-50%);z-index:10060;pointer-events:none;opacity:0;transition:opacity .18s ease}
@@ -238,6 +245,12 @@ img.main{width:100%;height:100%;object-fit:contain;touch-action:none}
     <img src="level.svg" alt="לשלב הבא">
   </button>
 </div>
+<div id="endGreetingBackdrop" class="hidden" aria-hidden="true"></div>
+<div id="endGreetingPopup" class="hidden" aria-hidden="true">
+  <button id="endGreetingBtn" type="button" aria-label="לגלריה" title="לגלריה">
+    <img src="greetingPASS.svg" alt="מעבר לגלריה">
+  </button>
+</div>
 <img id="oopsPopup" class="hidden" src="oops.svg" alt="oops">
 <div id="oopsTimer" class="hidden" aria-hidden="true">
   <svg viewBox="0 0 240 240" role="presentation">
@@ -252,21 +265,51 @@ img.main{width:100%;height:100%;object-fit:contain;touch-action:none}
 <script>
 const miniGames = [
   {
-    "name": "aba",
-    "image1": "aba.png",
-    "image2": "aba.png",
+    "name": "טל פתח-תקווה",
+    "image1": "eldad1.jpg",
+    "image2": "eldad2.jpg",
     "differences": [
       {
-        "x": 205,
-        "y": 309,
-        "width": 172,
-        "height": 225
+        "x": 998,
+        "y": 265,
+        "width": 71,
+        "height": 30
       },
       {
-        "x": 790,
-        "y": 498,
-        "width": 154,
-        "height": 205
+        "x": 711,
+        "y": 102,
+        "width": 48,
+        "height": 59
+      },
+      {
+        "x": 21,
+        "y": 227,
+        "width": 60,
+        "height": 36
+      },
+      {
+        "x": 130,
+        "y": 457,
+        "width": 75,
+        "height": 34
+      },
+      {
+        "x": 591,
+        "y": 683,
+        "width": 48,
+        "height": 176
+      },
+      {
+        "x": 1058,
+        "y": 713,
+        "width": 48,
+        "height": 69
+      },
+      {
+        "x": 81,
+        "y": 128,
+        "width": 67,
+        "height": 57
       }
     ]
   },
@@ -424,6 +467,9 @@ const finishBackdrop=document.getElementById('finishBackdrop');
 const oopsBackdrop=document.getElementById('oopsBackdrop');
 const finishPopup=document.getElementById('finishPopup');
 const oopsPopup=document.getElementById('oopsPopup');
+const endGreetingBackdrop=document.getElementById('endGreetingBackdrop');
+const endGreetingPopup=document.getElementById('endGreetingPopup');
+const endGreetingBtn=document.getElementById('endGreetingBtn');
 let oopsHideTimer=null;
 let oopsTimerDelayTimer=null;
 let oopsTimerInterval=null;
@@ -1550,6 +1596,7 @@ function resetRoundState(){
   finishPopup.classList.remove('active');
   finishPopup.classList.add('hidden');
  }
+ hideEndGreetingPopup();
  updateStatus();
 }
 
@@ -2228,6 +2275,31 @@ function showFinishPopup(){
  finishPopup.classList.add('active');
 }
 
+function hideEndGreetingPopup(){
+ if(endGreetingBackdrop){
+  endGreetingBackdrop.classList.remove('active');
+  endGreetingBackdrop.classList.add('hidden');
+ }
+ if(endGreetingPopup){
+  endGreetingPopup.classList.remove('active');
+  endGreetingPopup.classList.add('hidden');
+ }
+}
+
+function showEndGreetingPopup(){
+ if(!endGreetingPopup)return;
+ if(endGreetingBackdrop){
+  endGreetingBackdrop.classList.remove('hidden');
+  endGreetingBackdrop.classList.remove('active');
+  void endGreetingBackdrop.offsetWidth;
+  endGreetingBackdrop.classList.add('active');
+ }
+ endGreetingPopup.classList.remove('hidden');
+ endGreetingPopup.classList.remove('active');
+ void endGreetingPopup.offsetWidth;
+ endGreetingPopup.classList.add('active');
+}
+
 function maybeCelebrateWin(){
  if(winEffectsPlayed)return;
  if(found.length!==differences.length)return;
@@ -2589,10 +2661,16 @@ if(nextMiniGameBtn){
  nextMiniGameBtn.onclick=()=>{
   const action=nextMiniGameBtn.dataset.action||'next';
   if(action==='gallery'){
-   goToGalleryFromGame();
+   showEndGreetingPopup();
    return;
   }
   startMiniGame(getNextMiniGameIndex());
+ };
+}
+if(endGreetingBtn){
+ endGreetingBtn.onclick=()=>{
+  hideEndGreetingPopup();
+  goToGalleryFromGame();
  };
 }
 registerGroupServiceWorker().catch(()=>{});
