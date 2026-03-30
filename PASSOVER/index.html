@@ -518,6 +518,7 @@ const SUPABASE_URL='https://cmmsnyecrovyxfzhyywm.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtbXNueWVjcm92eXhmemh5eXdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMzA2MjEsImV4cCI6MjA4NzgwNjYyMX0.ECt37FWwATG3ZlSoBE6R9OaM31MYuXHpGefXFH7uocg';
 const SUPABASE_TABLE='scores';
 let supportsSessionColumns=true;
+let supportsIdentityColumns=true;
 let participantName='';
 let participantJoined=false;
 let roundStartedAt=0;
@@ -611,7 +612,7 @@ function isMissingSessionColumnError(message){
 
 function isMissingOptionalColumnError(message){
  const m=String(message||'').toLowerCase();
- return (m.includes('session_id')||m.includes('participant_id')||m.includes('app_mode'))&&m.includes('does not exist');
+ return (m.includes('participant_id')||m.includes('app_mode'))&&m.includes('does not exist');
 }
 
 function clearPushToast(){
@@ -938,9 +939,12 @@ async function postParticipantResults(final=false){
   current_mini_game:getMiniGameName(currentMiniGameIndex),
   updated_at:new Date().toISOString()
  };
- const extendedPayload={
+ const sessionPayload={
   ...basePayload,
-  session_id:groupSessionId,
+  session_id:groupSessionId
+ };
+ const extendedPayload={
+  ...sessionPayload,
   participant_id:participantId,
   app_mode:'group'
  };
@@ -960,9 +964,18 @@ async function postParticipantResults(final=false){
   });
  };
  try{
-  let response=await postOne(supportsSessionColumns?extendedPayload:basePayload);
+  let payload=basePayload;
+  if(supportsSessionColumns){
+   payload=supportsIdentityColumns?extendedPayload:sessionPayload;
+  }
+  let response=await postOne(payload);
   let responseText=await response.text();
-  if(!response.ok&&supportsSessionColumns&&isMissingOptionalColumnError(responseText)){
+  if(!response.ok&&supportsSessionColumns&&supportsIdentityColumns&&isMissingOptionalColumnError(responseText)){
+   supportsIdentityColumns=false;
+   response=await postOne(sessionPayload);
+   responseText=await response.text();
+  }
+  if(!response.ok&&supportsSessionColumns&&isMissingSessionColumnError(responseText)){
    supportsSessionColumns=false;
    response=await postOne(basePayload);
    responseText=await response.text();
