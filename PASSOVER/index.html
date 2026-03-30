@@ -513,6 +513,7 @@ let pendingStartCoinIntro=false;
 const LIVE_WINNER_POLL_MS=2200;
 const GROUP_SESSION_PARAM_KEYS=['session','group','match'];
 const GROUP_SESSION_STORAGE_KEY='spot_diff_group_session';
+const DEFAULT_GROUP_SESSION_ID='passover_live';
 const GROUP_PLAYER_STORAGE_KEY='spot_diff_group_player';
 const SUPABASE_URL='https://cmmsnyecrovyxfzhyywm.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtbXNueWVjcm92eXhmemh5eXdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMzA2MjEsImV4cCI6MjA4NzgwNjYyMX0.ECt37FWwATG3ZlSoBE6R9OaM31MYuXHpGefXFH7uocg';
@@ -567,13 +568,11 @@ function resolveGroupSessionId(){
     return candidate;
    }
   }
-  const stored=normalizeSessionId(localStorage.getItem(GROUP_SESSION_STORAGE_KEY));
-  if(stored)return stored;
-  const generated=makeRandomId('grp');
-  localStorage.setItem(GROUP_SESSION_STORAGE_KEY,generated);
-  return generated;
+  // Default all players into the same live room unless a session param is supplied.
+  localStorage.setItem(GROUP_SESSION_STORAGE_KEY,DEFAULT_GROUP_SESSION_ID);
+  return DEFAULT_GROUP_SESSION_ID;
  }catch(_){
-  return makeRandomId('grp');
+  return DEFAULT_GROUP_SESSION_ID;
  }
 }
 
