@@ -21,7 +21,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding-top: 60px;
+        padding: max(8px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
         box-sizing: border-box;
       }
 
@@ -71,26 +71,47 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       }
 
       #gameShell {
+        --hud-row-height: clamp(42px, 6.8vw, 66px);
+        --hud-row-gap: 10px;
         position: relative;
-        width: min(1070px, calc(100vw - 20px), calc((100vh - 80px) * 1070 / 1790));
+        width: var(
+          --game-shell-width,
+          min(
+            1070px,
+            calc(100vw - 20px),
+            calc(
+              (
+                  var(--app-height, 100dvh) -
+                  max(8px, env(safe-area-inset-top)) -
+                  max(12px, env(safe-area-inset-bottom)) -
+                  var(--hud-row-height) -
+                  var(--hud-row-gap) -
+                  8px
+                ) * 1070 / 1790
+            )
+          )
+        );
       }
 
       #hudRow {
         position: relative;
         direction: ltr;
-        height: clamp(42px, 6.8vw, 66px);
-        margin-bottom: 10px;
+        height: var(--hud-row-height);
+        margin-bottom: var(--hud-row-gap);
       }
 
       #findImage {
-        position: fixed;
-        left: max(12px, env(safe-area-inset-left));
-        top: max(8px, env(safe-area-inset-top));
-        z-index: 10030;
+        position: absolute;
+        left: clamp(6px, 1.1vw, 14px);
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 3;
         display: block;
-        width: clamp(207px, 41.4vw, 380px);
+        width: min(35.5%, 360px);
         height: auto;
+        max-height: calc(var(--hud-row-height) - 2px);
         margin: 0;
+        object-fit: contain;
         user-select: none;
         -webkit-user-drag: none;
         pointer-events: none;
@@ -340,7 +361,13 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       const DRAG_THRESHOLD_PX = 5;
       const TAP_GUARD_MS = 350;
       const FIND_VOLUME = 0.95;
+      const STAGE_ASPECT_RATIO = 1070 / 1790;
+      const HUD_HEIGHT_RATIO = 66 / 1070;
+      const HUD_MIN_HEIGHT = 42;
+      const HUD_MAX_HEIGHT = 66;
+      const HUD_ROW_GAP = 10;
 
+      const gameShell = document.getElementById("gameShell");
       const gameContainer = document.getElementById("gameContainer");
       const gameStage = document.getElementById("gameStage");
       const gameImage = document.getElementById("gameImage");
@@ -440,6 +467,48 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
       function clamp(value, min, max) {
         return Math.min(max, Math.max(min, value));
+      }
+
+      function updateAppHeightVar() {
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        document.documentElement.style.setProperty(
+          "--app-height",
+          `${Math.round(viewportHeight)}px`
+        );
+      }
+
+      function updateGameShellLayout() {
+        if (!gameShell) return;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const maxByWidth = Math.max(260, Math.min(1070, viewportWidth - 20));
+
+        let shellWidth = maxByWidth;
+        for (let i = 0; i < 3; i += 1) {
+          const hudHeight = clamp(
+            shellWidth * HUD_HEIGHT_RATIO,
+            HUD_MIN_HEIGHT,
+            HUD_MAX_HEIGHT
+          );
+          const availableHeight =
+            viewportHeight -
+            Math.max(8, 0) -
+            Math.max(12, 0) -
+            hudHeight -
+            HUD_ROW_GAP -
+            8;
+          const maxByHeight = Math.max(220, availableHeight * STAGE_ASPECT_RATIO);
+          shellWidth = Math.min(maxByWidth, maxByHeight, 1070);
+        }
+
+        const hudHeight = clamp(
+          shellWidth * HUD_HEIGHT_RATIO,
+          HUD_MIN_HEIGHT,
+          HUD_MAX_HEIGHT
+        );
+        gameShell.style.setProperty("--game-shell-width", `${Math.floor(shellWidth)}px`);
+        gameShell.style.setProperty("--hud-row-height", `${Math.round(hudHeight)}px`);
+        gameShell.style.setProperty("--hud-row-gap", `${HUD_ROW_GAP}px`);
       }
 
       function updatePortraitOnlyMode() {
@@ -1092,12 +1161,22 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         });
       }
 
-      window.addEventListener("resize", () => {
+      function handleViewportChange() {
+        updateAppHeightVar();
+        updateGameShellLayout();
         setupOverlayCanvas();
+        applyViewTransform();
         updatePortraitOnlyMode();
-      });
-      window.addEventListener("orientationchange", updatePortraitOnlyMode);
+      }
 
+      window.addEventListener("resize", handleViewportChange);
+      window.addEventListener("orientationchange", handleViewportChange);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", handleViewportChange);
+      }
+
+      updateAppHeightVar();
+      updateGameShellLayout();
       updatePortraitOnlyMode();
 
       initStarsHud();
