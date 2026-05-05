@@ -36,6 +36,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         position: fixed;
         inset: 0;
         z-index: 15000;
+        --start-content-width: min(100vw, calc(100vh * 349 / 626), 560px);
         background: #ff3344 url("redback.png") center/cover no-repeat;
         display: flex;
         align-items: center;
@@ -44,7 +45,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
       #startScreenContent {
         position: relative;
-        width: min(100vw, calc(100vh * 349 / 626));
+        width: var(--start-content-width);
         height: min(100vh, calc(100vw * 626 / 349));
         max-width: 560px;
         max-height: 100vh;
@@ -88,11 +89,12 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       }
 
       #startBlitzyImage {
-        position: absolute;
-        left: 51.7%;
-        bottom: 0;
+        position: fixed;
+        left: calc(50% + (var(--start-content-width) * 0.017));
+        bottom: env(safe-area-inset-bottom, 0px);
         transform: translateX(-50%);
-        width: 93.4%;
+        width: calc(var(--start-content-width) * 0.934);
+        max-width: 523px;
         height: auto;
         user-select: none;
         -webkit-user-drag: none;
@@ -258,9 +260,12 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       #finishPopup{position:fixed;left:50%;top:50%;width:min(88.4vw,468px);max-width:90vw;opacity:0;transform:translate(-50%,-50%) scale(.75);z-index:10045;filter:drop-shadow(0 10px 26px rgba(0,0,0,.8));pointer-events:none}
       #finishPopup.active{opacity:1;animation:popupBounce 1.1s cubic-bezier(.22,.61,.36,1) forwards}
       #finishPopupImg{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
-      #finishEndBtn{position:absolute;left:50%;bottom:calc(11.8% + 17px);transform:translateX(-50%);z-index:2;width:min(52%,250px);max-width:74vw;border:0;background:transparent;padding:0;cursor:pointer;pointer-events:auto}
-      #finishEndBtn img{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
-      #finishEndBtn:active{transform:translateX(-50%) translateY(1px)}
+      .finishActionBtn{position:absolute;left:50%;transform:translateX(-50%);z-index:2;width:min(48.45%,232.9px);max-width:64.6vw;border:0;background:transparent;padding:0;cursor:pointer;pointer-events:auto}
+      .finishActionBtn img{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
+      .finishActionBtn:active{transform:translateX(-50%) translateY(1px)}
+      #finishMovieBtn{bottom:36.2%}
+      #finishPlayBtn{bottom:13.8%}
+      #finishBlitzyLike{position:fixed;left:50%;bottom:env(safe-area-inset-bottom,0px);transform:translateX(-50%);z-index:10044;width:min(46vw,288px);max-width:72vw;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none}
       @keyframes popupBounce{0%{transform:translate(-50%,-50%) scale(.2)}32%{transform:translate(-50%,-50%) scale(1.12)}55%{transform:translate(-50%,-50%) scale(1.02)}74%{transform:translate(-50%,-50%) scale(1.09)}88%{transform:translate(-50%,-50%) scale(1.1)}100%{transform:translate(-50%,-50%) scale(1.12)}}
       #portraitOnlyOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20000;background:rgba(0,0,0,.88);padding:24px}
       #portraitOnlyOverlay .portraitOnlyCard{max-width:min(520px,92vw);border:1px solid rgba(255,255,255,.32);border-radius:16px;background:rgba(15,15,15,.9);padding:22px 18px;color:#fff;font-family:Arial,sans-serif;font-size:clamp(18px,4.2vw,26px);font-weight:800;line-height:1.35;text-align:center;box-shadow:0 14px 34px rgba(0,0,0,.42)}
@@ -300,10 +305,14 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
     <canvas id="confettiCanvas" class="hidden"></canvas>
     <div id="finishBackdrop" class="hidden" aria-hidden="true"></div>
+    <img id="finishBlitzyLike" class="hidden" src="blitzyLike.png" alt="" aria-hidden="true" />
     <div id="finishPopup" class="hidden" aria-hidden="true">
       <img id="finishPopupImg" src="finish.svg" alt="finish" />
-      <button id="finishEndBtn" type="button" aria-label="סיום" title="סיום">
-        <img src="end.svg" alt="סיום" />
+      <button id="finishMovieBtn" class="finishActionBtn" type="button" aria-label="To the movie" title="To the movie">
+        <img src="movie_button.png" alt="To the movie" />
+      </button>
+      <button id="finishPlayBtn" class="finishActionBtn" type="button" aria-label="Play again" title="Play again">
+        <img src="play_button.png" alt="Play again" />
       </button>
     </div>
 
@@ -351,8 +360,10 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       const startGameBtn = document.getElementById("startGameBtn");
       const confettiCanvas = document.getElementById("confettiCanvas");
       const finishBackdrop = document.getElementById("finishBackdrop");
+      const finishBlitzyLike = document.getElementById("finishBlitzyLike");
       const finishPopup = document.getElementById("finishPopup");
-      const finishEndBtn = document.getElementById("finishEndBtn");
+      const finishMovieBtn = document.getElementById("finishMovieBtn");
+      const finishPlayBtn = document.getElementById("finishPlayBtn");
       const portraitOnlyOverlay = document.getElementById("portraitOnlyOverlay");
       const findAudio = new Audio("money.wav");
       findAudio.preload = "auto";
@@ -639,6 +650,10 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
           finishBackdrop.classList.remove("active");
           void finishBackdrop.offsetWidth;
           finishBackdrop.classList.add("active");
+        }
+
+        if (finishBlitzyLike) {
+          finishBlitzyLike.classList.remove("hidden");
         }
 
         if (finishPopup) {
@@ -1073,9 +1088,15 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       gameContainer.addEventListener("pointerup", handlePointerEnd);
       gameContainer.addEventListener("pointercancel", handlePointerEnd);
 
-      if (finishEndBtn) {
-        finishEndBtn.addEventListener("click", () => {
+      if (finishMovieBtn) {
+        finishMovieBtn.addEventListener("click", () => {
           window.location.href = "index.html?home=1";
+        });
+      }
+
+      if (finishPlayBtn) {
+        finishPlayBtn.addEventListener("click", () => {
+          window.location.reload();
         });
       }
 
