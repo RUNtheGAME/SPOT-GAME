@@ -341,8 +341,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 ;
 
       const MIN_SCALE = 1;
-      const MAX_SCALE = 2;
-      const INITIAL_EXTRA_ZOOM = 1.05;
+      const MAX_SCALE = 2.1;
       const MISS_DURATION_MS = 500;
       const MISS_VIBRATION_MS = 120;
       const DRAG_THRESHOLD_PX = 5;
@@ -789,15 +788,6 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         state.view.ty = clamp(state.view.ty, minY, 0);
       }
 
-      function applyInitialZoom() {
-        const stageWidth = getStageWidth();
-        const stageHeight = getStageHeight();
-        state.view.scale = clamp(INITIAL_EXTRA_ZOOM, MIN_SCALE, MAX_SCALE);
-        state.view.tx = (stageWidth - stageWidth * state.view.scale) * 0.5;
-        state.view.ty = (stageHeight - stageHeight * state.view.scale) * 0.5;
-        clampViewToBounds();
-      }
-
       function applyViewTransform() {
         gameStage.style.transform =
           "translate(" + state.view.tx + "px, " + state.view.ty + "px) scale(" + state.view.scale + ")";
@@ -1139,7 +1129,6 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
         initStarsHud();
         setupOverlayCanvas();
-        applyInitialZoom();
         applyViewTransform();
 
         if (EMBEDDED_GAME_PACKAGE?.image?.src) {
