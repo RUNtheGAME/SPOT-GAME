@@ -485,6 +485,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       let winDelayTimer = null;
       const FINISH_DELAY_MS = 1000;
       let gameStarted = false;
+      let lastTapHandledAt = 0;
 
       const state = {
         targets: (EMBEDDED_GAME_PACKAGE.targets || []).map((target) => ({
@@ -1005,6 +1006,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
       function handleTap(localX, localY) {
         if (gameFinished) return;
+        lastTapHandledAt = Date.now();
 
         const point = localToNormalized(localX, localY);
         const hit = hitTest(point);
@@ -1194,6 +1196,14 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
 
       gameContainer.addEventListener("pointerup", handlePointerEnd);
       gameContainer.addEventListener("pointercancel", handlePointerEnd);
+
+      // iOS Safari fallback: some devices intermittently skip pointerup.
+      gameContainer.addEventListener("click", (event) => {
+        if (!gameStarted || gameFinished) return;
+        if (Date.now() - lastTapHandledAt < 350) return;
+        const local = toLocalPoint(event.clientX, event.clientY);
+        handleTap(local.x, local.y);
+      });
 
       if (finishMovieBtn) {
         finishMovieBtn.addEventListener("click", () => {
