@@ -37,6 +37,11 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         inset: 0;
         z-index: 15000;
         --start-content-width: min(100vw, calc(100vh * 349 / 626), 560px);
+        --start-help-top: 7%;
+        --start-help-width: 82%;
+        --start-hero-top: 22%;
+        --start-hero-width: 92%;
+        --start-btn-bottom: 6%;
         background: #ff3344 url("redback.png") center/cover no-repeat;
         display: flex;
         align-items: center;
@@ -54,10 +59,11 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       #startHelpImage {
         position: absolute;
         left: 50%;
-        top: 11.2%;
-        transform: translateX(-50%) translateY(30%);
-        width: 76.8%;
+        top: var(--start-help-top);
+        transform: translateX(-50%);
+        width: var(--start-help-width);
         height: auto;
+        z-index: 3;
         user-select: none;
         -webkit-user-drag: none;
         pointer-events: none;
@@ -66,9 +72,10 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       #startGameBtn {
         position: absolute;
         left: 50%;
-        top: 45.1%;
+        bottom: calc(var(--start-btn-bottom) + env(safe-area-inset-bottom, 0px));
         transform: translateX(-50%);
         width: 52.2%;
+        z-index: 4;
         border: 0;
         background: transparent;
         padding: 0;
@@ -89,16 +96,26 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
       }
 
       #startBlitzyImage {
-        position: fixed;
-        left: calc(50% + (var(--start-content-width) * 0.017));
-        bottom: env(safe-area-inset-bottom, 0px);
+        position: absolute;
+        left: 50%;
+        top: var(--start-hero-top);
         transform: translateX(-50%);
-        width: calc(var(--start-content-width) * 0.934);
-        max-width: 523px;
+        width: var(--start-hero-width);
         height: auto;
+        z-index: 2;
         user-select: none;
         -webkit-user-drag: none;
         pointer-events: none;
+      }
+
+      @media (max-height: 720px) {
+        #startScreen {
+          --start-help-top: 6%;
+          --start-help-width: 79%;
+          --start-hero-top: 20%;
+          --start-hero-width: 88%;
+          --start-btn-bottom: 5%;
+        }
       }
 
 
@@ -287,7 +304,7 @@ button:focus,button:focus-visible,a:focus,a:focus-visible,input:focus,select:foc
         <button id="startGameBtn" type="button" aria-label="התחלת משחק">
           <img src="start_button.png" alt="Go find 'em" />
         </button>
-        <img id="startBlitzyImage" src="blitzyFind.png" alt="" aria-hidden="true" />
+        <img id="startBlitzyImage" src="blitzyFRIENDS.png" alt="" aria-hidden="true" />
       </div>
     </div>
 
