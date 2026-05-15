@@ -12,8 +12,10 @@
         --accent: #f59e0b;
         --accent-2: #fb7185;
         --text: #f8fafc;
-        --slot-width: 306px;
-        --slot-size: 198px;
+        --slot-width: 280px;
+        --page-padding: 12px;
+        --game-padding: 14px;
+        --machine-padding: 12px;
       }
 
       * {
@@ -35,16 +37,24 @@
         background-repeat: no-repeat;
         display: grid;
         place-items: center;
-        padding: 24px;
+        padding: var(--page-padding);
         overflow-x: hidden;
       }
 
       .game {
-        width: min(calc(var(--slot-width) + 88px), 100%);
+        width: min(
+          calc(
+            var(--slot-width) +
+            var(--machine-padding) + var(--machine-padding) +
+            var(--game-padding) + var(--game-padding) +
+            4px
+          ),
+          100%
+        );
         background: var(--panel);
         border: 1px solid rgba(248, 250, 252, 0.15);
         border-radius: 22px;
-        padding: 24px;
+        padding: var(--game-padding);
         backdrop-filter: blur(8px);
         box-shadow: 0 18px 45px rgba(2, 8, 23, 0.55);
       }
@@ -59,13 +69,14 @@
         position: relative;
         border-radius: 18px;
         border: 1px solid rgba(248, 250, 252, 0.18);
-        padding: 18px;
+        padding: var(--machine-padding);
         background: linear-gradient(165deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
       }
 
       .reel {
-        width: var(--slot-width);
-        height: var(--slot-size);
+        width: min(var(--slot-width), 100%);
+        height: auto;
+        aspect-ratio: 170 / 110;
         position: relative;
         margin-inline: auto;
         border-radius: 14px;
@@ -189,6 +200,55 @@
         font-size: 0.98rem;
         min-height: 1.4em;
         color: #fde68a;
+      }
+
+      @media (max-width: 380px) {
+        :root {
+          --slot-width: 248px;
+          --page-padding: 10px;
+          --game-padding: 12px;
+          --machine-padding: 10px;
+        }
+
+        h1 {
+          margin-bottom: 12px;
+          font-size: 1.2rem;
+        }
+
+        .reel + .reel {
+          margin-top: 8px;
+        }
+
+        .controls {
+          margin-top: 14px;
+        }
+
+        button {
+          padding: 10px 22px;
+          font-size: 0.95rem;
+        }
+
+        .result {
+          font-size: 0.92rem;
+        }
+      }
+
+      @media (min-width: 768px) {
+        :root {
+          --slot-width: 320px;
+          --page-padding: 18px;
+          --game-padding: 20px;
+          --machine-padding: 16px;
+        }
+      }
+
+      @media (min-width: 1200px) {
+        :root {
+          --slot-width: 360px;
+          --page-padding: 24px;
+          --game-padding: 24px;
+          --machine-padding: 18px;
+        }
       }
     </style>
   </head>
