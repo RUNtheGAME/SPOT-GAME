@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizontal Slot Machine</title>
+    <style>
+      :root {
+        --bg-1: #0b1120;
+        --bg-2: #172554;
+        --panel: rgba(15, 23, 42, 0.75);
+        --accent: #f59e0b;
+        --accent-2: #fb7185;
+        --text: #f8fafc;
+        --slot-width: 280px;
+        --page-padding: 12px;
+        --game-padding: 14px;
+        --machine-padding: 12px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        overflow-x: hidden;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        color: var(--text);
+        background-image: url("redback2.png");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: grid;
+        place-items: center;
+        padding: var(--page-padding);
+        overflow-x: hidden;
+      }
+
+      .game {
+        width: min(
+          calc(
+            var(--slot-width) +
+            var(--machine-padding) + var(--machine-padding) +
+            var(--game-padding) + var(--game-padding) +
+            4px
+          ),
+          100%
+        );
+        background: var(--panel);
+        border: 1px solid rgba(248, 250, 252, 0.15);
+        border-radius: 22px;
+        padding: var(--game-padding);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 18px 45px rgba(2, 8, 23, 0.55);
+      }
+
+      h1 {
+        margin: 0 0 18px;
+        text-align: center;
+        font-size: clamp(1.4rem, 3vw, 2rem);
+      }
+
+      .machine {
+        position: relative;
+        border-radius: 18px;
+        border: 1px solid rgba(248, 250, 252, 0.18);
+        padding: var(--machine-padding);
+        background: linear-gradient(165deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+      }
+
+      .reel {
+        width: min(var(--slot-width), 100%);
+        height: auto;
+        aspect-ratio: 170 / 110;
+        position: relative;
+        margin-inline: auto;
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+      }
+
+      .reel::before,
+      .reel::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 30.8%;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      .reel::before {
+        left: 0;
+        background: linear-gradient(
+          to right,
+          rgba(17, 24, 39, 1) 0%,
+          rgba(55, 65, 81, 0.72) 45%,
+          rgba(248, 250, 252, 0) 100%
+        );
+      }
+
+      .reel::after {
+        right: 0;
+        background: linear-gradient(
+          to left,
+          rgba(17, 24, 39, 1) 0%,
+          rgba(55, 65, 81, 0.72) 45%,
+          rgba(248, 250, 252, 0) 100%
+        );
+      }
+
+      .reel + .reel {
+        margin-top: 12px;
+      }
+
+      .track {
+        position: absolute;
+        inset: 0;
+        min-width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        z-index: 1;
+        direction: ltr;
+        transform: translateX(0);
+        -webkit-transform: translateX(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        will-change: transform;
+      }
+
+      .symbol {
+        flex: 0 0 100%;
+        height: 100%;
+        display: grid;
+        place-items: center;
+        font-size: clamp(2.1rem, 6vw, 3rem);
+        background: linear-gradient(170deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+        border-inline: 1px solid rgba(248, 250, 252, 0.08);
+        text-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+        user-select: none;
+      }
+
+      .symbol--image {
+        background: transparent;
+        border-inline: 0;
+      }
+
+      .symbol-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .controls {
+        margin-top: 20px;
+        text-align: center;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 30px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        box-shadow: 0 10px 20px rgba(251, 113, 133, 0.35);
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        filter: brightness(1.05);
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .result {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 0.98rem;
+        min-height: 1.4em;
+        color: #fde68a;
+      }
+
+      @media (max-width: 380px) {
+        :root {
+          --slot-width: 248px;
+          --page-padding: 10px;
+          --game-padding: 12px;
+          --machine-padding: 10px;
+        }
+
+        h1 {
+          margin-bottom: 12px;
+          font-size: 1.2rem;
+        }
+
+        .reel + .reel {
+          margin-top: 8px;
+        }
+
+        .controls {
+          margin-top: 14px;
+        }
+
+        button {
+          padding: 10px 22px;
+          font-size: 0.95rem;
+        }
+
+        .result {
+          font-size: 0.92rem;
+        }
+      }
+
+      @media (min-width: 768px) {
+        :root {
+          --slot-width: 320px;
+          --page-padding: 18px;
+          --game-padding: 20px;
+          --machine-padding: 16px;
+        }
+      }
+
+      @media (min-width: 1200px) {
+        :root {
+          --slot-width: 360px;
+          --page-padding: 24px;
+          --game-padding: 24px;
+          --machine-padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="game">
+      <h1>Slot Machine אופקית</h1>
+
+      <section class="machine" aria-label="מכונת סלוט אופקית">
+        <div class="reel"><div class="track" id="track-0"></div></div>
+        <div class="reel"><div class="track" id="track-1"></div></div>
+        <div class="reel"><div class="track" id="track-2"></div></div>
+      </section>
+
+      <div class="controls">
+        <button id="spin-btn" type="button">גלגל!</button>
+        <p class="result" id="result" aria-live="polite"></p>
+      </div>
+    </main>
+
+    <script>
+      const topReelSymbols = [
+        { src: "top1.jpg", label: "TOP 1" },
+        { src: "top2.jpg", label: "TOP 2" },
+        { src: "top3.jpg", label: "TOP 3" },
+        { src: "top4.jpg", label: "TOP 4" },
+        { src: "top5.jpg", label: "TOP 5" },
+        { src: "top6.jpg", label: "TOP 6" },
+        { src: "top7.jpg", label: "TOP 7" },
+        { src: "top8.jpg", label: "TOP 8" }
+      ];
+      const midReelSymbols = [
+        { src: "mid1.jpg", label: "MID 1" },
+        { src: "mid2.jpg", label: "MID 2" },
+        { src: "mid3.jpg", label: "MID 3" },
+        { src: "mid4.jpg", label: "MID 4" },
+        { src: "mid5.jpg", label: "MID 5" },
+        { src: "mid6.jpg", label: "MID 6" },
+        { src: "mid7.jpg", label: "MID 7" },
+        { src: "mid8.jpg", label: "MID 8" }
+      ];
+      const botReelSymbols = [
+        { src: "bot1.jpg", label: "BOT 1" },
+        { src: "bot2.jpg", label: "BOT 2" },
+        { src: "bot3.jpg", label: "BOT 3" },
+        { src: "bot4.jpg", label: "BOT 4" },
+        { src: "bot5.jpg", label: "BOT 5" },
+        { src: "bot6.jpg", label: "BOT 6" },
+        { src: "bot7.jpg", label: "BOT 7" },
+        { src: "bot8.jpg", label: "BOT 8" }
+      ];
+      const reelSymbolSets = [topReelSymbols, midReelSymbols, botReelSymbols];
+      const reels = [
+        document.getElementById("track-0"),
+        document.getElementById("track-1"),
+        document.getElementById("track-2")
+      ];
+      const spinButton = document.getElementById("spin-btn");
+      const result = document.getElementById("result");
+      const lastShown = reelSymbolSets.map((set, index) => index % set.length);
+      const guaranteedWinEvery = 10;
+      let spinsWithoutWin = 0;
+
+      [...topReelSymbols, ...midReelSymbols, ...botReelSymbols].forEach((entry) => {
+        const img = new Image();
+        img.src = entry.src;
+      });
+
+      function symbolCell(symbol) {
+        if (typeof symbol === "string") {
+          return `<div class="symbol">${symbol}</div>`;
+        }
+
+        return `<div class="symbol symbol--image"><img class="symbol-image" src="${symbol.src}" alt="${symbol.label}" draggable="false" /></div>`;
+      }
+
+      function symbolName(symbol) {
+        if (typeof symbol === "string") {
+          return symbol;
+        }
+        return symbol.src.replace(/\.[^.]+$/, "");
+      }
+
+      function endingDigit(symbol) {
+        const match = symbolName(symbol).match(/(\d)$/);
+        return match ? match[1] : null;
+      }
+
+      function renderTrack(trackEl, sequence) {
+        trackEl.innerHTML = sequence.map(symbolCell).join("");
+      }
+
+      function animateTrack(trackEl, targetIndex, durationMs) {
+        trackEl.style.transition = "none";
+        trackEl.style.transform = "translateX(0)";
+        trackEl.style.webkitTransform = "translateX(0)";
+
+        // Force style calculation before transition start.
+        trackEl.offsetHeight;
+
+        const startAnimation = () => {
+          trackEl.style.transition = `transform ${durationMs}ms cubic-bezier(0.16, 0.84, 0.32, 1)`;
+          trackEl.style.transform = `translateX(-${targetIndex * 100}%)`;
+          trackEl.style.webkitTransform = `translateX(-${targetIndex * 100}%)`;
+        };
+
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(startAnimation);
+        } else {
+          startAnimation();
+        }
+      }
+
+      function nextTargetIndex(symbolSet, previousIndex) {
+        if (symbolSet.length <= 1) {
+          return 0;
+        }
+
+        let chosen = Math.floor(Math.random() * symbolSet.length);
+        while (chosen === previousIndex) {
+          chosen = Math.floor(Math.random() * symbolSet.length);
+        }
+        return chosen;
+      }
+
+      function randomItem(items) {
+        return items[Math.floor(Math.random() * items.length)];
+      }
+
+      function createWinningTargets() {
+        const commonDigits = reelSymbolSets
+          .map((symbolSet) => new Set(symbolSet.map(endingDigit).filter((digit) => digit !== null)))
+          .reduce((currentCommon, nextSet) =>
+            new Set([...currentCommon].filter((digit) => nextSet.has(digit)))
+          );
+
+        if (commonDigits.size === 0) {
+          return null;
+        }
+
+        const winningDigit = randomItem([...commonDigits]);
+
+        return reelSymbolSets.map((symbolSet, reelIndex) => {
+          const candidates = symbolSet
+            .map((symbol, index) => ({ symbol, index }))
+            .filter((entry) => endingDigit(entry.symbol) === winningDigit)
+            .map((entry) => entry.index);
+
+          if (candidates.length === 0) {
+            return nextTargetIndex(symbolSet, lastShown[reelIndex]);
+          }
+
+          const preferred = candidates.filter((index) => index !== lastShown[reelIndex]);
+          return randomItem(preferred.length > 0 ? preferred : candidates);
+        });
+      }
+
+      function createTargets(forceWin = false) {
+        if (forceWin) {
+          const winningTargets = createWinningTargets();
+          if (winningTargets) {
+            return winningTargets;
+          }
+        }
+
+        return reelSymbolSets.map((symbolSet, reelIndex) =>
+          nextTargetIndex(symbolSet, lastShown[reelIndex])
+        );
+      }
+
+      function spin() {
+        spinButton.disabled = true;
+        result.textContent = "הגלגלים מסתובבים...";
+
+        const mustForceWin = spinsWithoutWin >= guaranteedWinEvery - 1;
+        const targets = createTargets(mustForceWin);
+        let completed = 0;
+
+        reels.forEach((reel, reelIndex) => {
+          const symbolSet = reelSymbolSets[reelIndex];
+          const targetSymbol = symbolSet[targets[reelIndex]];
+          const sequenceLength = 18 + reelIndex * 5;
+          const sequence = Array.from(
+            { length: sequenceLength },
+            () => symbolSet[Math.floor(Math.random() * symbolSet.length)]
+          );
+          sequence.push(targetSymbol);
+
+          const targetIndex = sequence.length - 1;
+          const duration = 2100 + reelIndex * 700;
+
+          renderTrack(reel, sequence);
+          animateTrack(reel, targetIndex, duration);
+
+          window.setTimeout(() => {
+            reel.style.transition = "none";
+            reel.style.transform = "translateX(0)";
+            reel.style.webkitTransform = "translateX(0)";
+            reel.innerHTML = symbolCell(targetSymbol);
+
+            lastShown[reelIndex] = targets[reelIndex];
+            completed += 1;
+
+            if (completed === reels.length) {
+              spinButton.disabled = false;
+              const finalSymbols = reelSymbolSets.map((symbolSet, index) => symbolSet[targets[index]]);
+              const digits = finalSymbols.map(endingDigit);
+              const isWin =
+                digits[0] !== null &&
+                digits[0] === digits[1] &&
+                digits[1] === digits[2];
+              const combo = finalSymbols.map(symbolName).join(" | ");
+              spinsWithoutWin = isWin ? 0 : spinsWithoutWin + 1;
+
+              result.textContent = isWin
+                ? `זכייה! ${combo}`
+                : `התוצאה: ${combo}`;
+            }
+          }, duration + 40);
+        });
+      }
+
+      reels.forEach((reel, index) => {
+        reel.innerHTML = symbolCell(reelSymbolSets[index][lastShown[index]]);
+      });
+
+      spinButton.addEventListener("click", spin);
+    </script>
+  </body>
+</html>
