@@ -24,24 +24,36 @@
 
       html {
         overflow-x: hidden;
+        min-height: 100%;
       }
 
       body {
         margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         font-family: "Segoe UI", Tahoma, sans-serif;
         color: var(--text);
-        background-image: url("redback2.png");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
+        background-color: #0b1120;
         display: grid;
         place-items: center;
         padding: var(--page-padding);
         overflow-x: hidden;
+        position: relative;
+      }
+
+      .page-bg {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+        pointer-events: none;
       }
 
       .game {
+        position: relative;
+        z-index: 1;
         width: min(
           calc(
             var(--slot-width) +
@@ -253,6 +265,7 @@
     </style>
   </head>
   <body>
+    <img class="page-bg" src="redback2.png" alt="" aria-hidden="true" />
     <main class="game">
       <h1>Slot Machine אופקית</h1>
 
