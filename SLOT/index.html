@@ -37,7 +37,7 @@
         display: grid;
         place-items: center;
         padding: var(--page-padding);
-        overflow-x: hidden;
+        overflow: hidden;
         position: relative;
       }
 
@@ -69,6 +69,7 @@
         padding: var(--game-padding);
         backdrop-filter: blur(8px);
         box-shadow: 0 18px 45px rgba(2, 8, 23, 0.55);
+        transform-origin: center center;
       }
 
       h1 {
@@ -318,11 +319,13 @@
         document.getElementById("track-1"),
         document.getElementById("track-2")
       ];
+      const game = document.querySelector(".game");
       const spinButton = document.getElementById("spin-btn");
       const result = document.getElementById("result");
       const lastShown = reelSymbolSets.map((set, index) => index % set.length);
       const guaranteedWinEvery = 10;
       let spinsWithoutWin = 0;
+      let fitScheduled = false;
 
       [...topReelSymbols, ...midReelSymbols, ...botReelSymbols].forEach((entry) => {
         const img = new Image();
@@ -351,6 +354,35 @@
 
       function renderTrack(trackEl, sequence) {
         trackEl.innerHTML = sequence.map(symbolCell).join("");
+      }
+
+      function fitGameToViewport() {
+        if (!game) {
+          return;
+        }
+
+        game.style.transform = "none";
+
+        const rect = game.getBoundingClientRect();
+        const bodyStyle = getComputedStyle(document.body);
+        const padX = Number.parseFloat(bodyStyle.paddingLeft) + Number.parseFloat(bodyStyle.paddingRight);
+        const padY = Number.parseFloat(bodyStyle.paddingTop) + Number.parseFloat(bodyStyle.paddingBottom);
+        const maxWidth = Math.max(0, window.innerWidth - padX);
+        const maxHeight = Math.max(0, window.innerHeight - padY);
+        const scale = Math.min(1, maxWidth / rect.width, maxHeight / rect.height);
+
+        game.style.transform = `scale(${scale})`;
+      }
+
+      function scheduleFitGameToViewport() {
+        if (fitScheduled) {
+          return;
+        }
+        fitScheduled = true;
+        requestAnimationFrame(() => {
+          fitScheduled = false;
+          fitGameToViewport();
+        });
       }
 
       function animateTrack(trackEl, targetIndex, durationMs) {
@@ -487,6 +519,9 @@
         reel.innerHTML = symbolCell(reelSymbolSets[index][lastShown[index]]);
       });
 
+      scheduleFitGameToViewport();
+      window.addEventListener("resize", scheduleFitGameToViewport);
+      window.addEventListener("orientationchange", scheduleFitGameToViewport);
       spinButton.addEventListener("click", spin);
     </script>
   </body>
