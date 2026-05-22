@@ -29,23 +29,26 @@ export function resolveMemberImageUrl(rawUrl) {
   }
 
   // Project image fallbacks are stored as absolute paths (/family-images/...).
-  // Convert them to a URL that respects Vite BASE_URL so they work on:
+  // Convert them to a URL relative to the current page folder so they work on:
   // 1) localhost root (/)
-  // 2) GitHub Pages subpaths (/repo-name/)
+  // 2) GitHub Pages subpaths (/repo-name/subfolder/)
   // 3) file:// offline mode (./family-images/...)
   if (url.startsWith('/')) {
     const cleanPath = url.replace(/^\/+/, '');
-    const baseUrl =
-      typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL
-        ? String(import.meta.env.BASE_URL)
-        : '/';
-
-    if (baseUrl === './' || baseUrl === '.') {
+    if (typeof window === 'undefined' || !window.location) {
       return `./${cleanPath}`;
     }
 
-    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-    return `${normalizedBase}${cleanPath}`;
+    if (window.location.protocol === 'file:') {
+      return `./${cleanPath}`;
+    }
+
+    const pathname = window.location.pathname || '/';
+    const baseDir = pathname.endsWith('/')
+      ? pathname
+      : pathname.slice(0, pathname.lastIndexOf('/') + 1);
+
+    return `${window.location.origin}${baseDir}${cleanPath}`;
   }
 
   return url;
