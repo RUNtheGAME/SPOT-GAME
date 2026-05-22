@@ -1,1 +1,9 @@
-
+{
+  "name": "Tree of Generations",
+  "site": {
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "serveCommand": "npm run dev",
+    "outputDirectory": "./dist"
+  }
+}
