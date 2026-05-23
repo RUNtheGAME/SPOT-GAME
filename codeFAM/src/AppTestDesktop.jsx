@@ -406,7 +406,6 @@ export default function AppTestDesktop() {
                 members={treeMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
-                mobileCompact
               />
             </section>
           )}
@@ -591,14 +590,12 @@ export default function AppTestDesktop() {
                 members={treeMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
-                mobileCompact
               />
             ) : (
               <FamilySchematicDiagram
                 members={treeMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
-                mobileCompact
               />
             )}
           </section>

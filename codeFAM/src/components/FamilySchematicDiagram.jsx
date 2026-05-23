@@ -235,6 +235,34 @@ function memberInitials(name) {
   return words.slice(0, 2).map((part) => part[0]).join('');
 }
 
+function splitMemberName(name) {
+  const words = String(formatDisplayName(name) || '').split(/\s+/).filter(Boolean);
+  if (words.length === 0) return { firstName: '', lastName: '' };
+  if (words.length === 1) return { firstName: words[0], lastName: '' };
+  return { firstName: words[0], lastName: words.slice(1).join(' ') };
+}
+
+function renderMemberTitle(member, mobileCompact) {
+  const displayName = formatDisplayName(member?.name);
+  const deceasedSuffix = member?.date_of_death ? ' ז"ל' : '';
+
+  if (!mobileCompact) {
+    return <strong>{deceasedSuffix ? `${displayName}${deceasedSuffix}` : displayName}</strong>;
+  }
+
+  const { firstName, lastName } = splitMemberName(member?.name);
+  const firstLine = deceasedSuffix && !lastName ? `${firstName || displayName}${deceasedSuffix}` : firstName || displayName;
+  const secondLine = deceasedSuffix && lastName ? `${lastName}${deceasedSuffix}` : lastName;
+
+  return (
+    <strong className="schematic-mobile-name">
+      {firstLine || '\u00A0'}
+      <br />
+      {secondLine || '\u00A0'}
+    </strong>
+  );
+}
+
 function MemberPhoto({ member }) {
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = resolveMemberImageUrl(member?.image_url);
@@ -402,7 +430,7 @@ function orderPairForDisplay(pair, childMemberIds) {
   return [lead, ...pair.filter((member) => member.id !== lead.id)];
 }
 
-export default function FamilySchematicDiagram({ members, selectedMemberId, onSelectMember }) {
+export default function FamilySchematicDiagram({ members, selectedMemberId, onSelectMember, mobileCompact = false }) {
   const [diagramMode, setDiagramMode] = useState('classic');
   const treeContainerRef = useRef(null);
 
@@ -672,7 +700,7 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
   }
 
   return (
-    <div className="schematic-tree" ref={treeContainerRef}>
+    <div className={mobileCompact ? "schematic-tree schematic-mobile-compact" : "schematic-tree"} ref={treeContainerRef}>
       {(!members || members.length === 0) && (
         <p className="tree-diagram-help">
           מציג כרגע נתוני גיבוי מהקובץ משפחת_טל.xlsx, כי לא נטענו נתוני FamilyMember מהשרת.
@@ -718,10 +746,8 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                     onClick={() => onSelectMember && onSelectMember(spouse.id)}
                   >
                     <MemberPhoto member={spouse} />
-                    <strong>
-                      {spouse.date_of_death ? `${formatDisplayName(spouse.name)} ז"ל` : formatDisplayName(spouse.name)}
-                    </strong>
-                    <span>{personHint(spouse, membersById)}</span>
+                    {renderMemberTitle(spouse, mobileCompact)}
+                    {!mobileCompact && <span>{personHint(spouse, membersById)}</span>}
                   </button>
                   <span className="schematic-spouse-dash" />
                 </React.Fragment>
@@ -734,10 +760,8 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                     onClick={() => onSelectMember && onSelectMember(member.id)}
                   >
                     <MemberPhoto member={member} />
-                    <strong>
-                      {member.date_of_death ? `${formatDisplayName(member.name)} ז"ל` : formatDisplayName(member.name)}
-                    </strong>
-                    <span>{personHint(member, membersById)}</span>
+                    {renderMemberTitle(member, mobileCompact)}
+                    {!mobileCompact && <span>{personHint(member, membersById)}</span>}
                   </button>
                   {index === 0 && family.parents.length > 1 && <span className="schematic-heart">♡</span>}
                 </React.Fragment>
@@ -761,10 +785,8 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                               onClick={() => onSelectMember && onSelectMember(spouse.id)}
                             >
                               <MemberPhoto member={spouse} />
-                              <strong>
-                                {spouse.date_of_death ? `${formatDisplayName(spouse.name)} ז"ל` : formatDisplayName(spouse.name)}
-                              </strong>
-                              <span>{personHint(spouse, membersById)}</span>
+                              {renderMemberTitle(spouse, mobileCompact)}
+                    {!mobileCompact && <span>{personHint(spouse, membersById)}</span>}
                             </button>
                             <span className="schematic-spouse-dash" />
                           </React.Fragment>
@@ -778,10 +800,8 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                               onClick={() => onSelectMember && onSelectMember(member.id)}
                             >
                               <MemberPhoto member={member} />
-                              <strong>
-                                {member.date_of_death ? `${formatDisplayName(member.name)} ז"ל` : formatDisplayName(member.name)}
-                              </strong>
-                              <span>{personHint(member, membersById)}</span>
+                              {renderMemberTitle(member, mobileCompact)}
+                    {!mobileCompact && <span>{personHint(member, membersById)}</span>}
                             </button>
                             {index === 0 && branch.pair.length > 1 && <span className="schematic-heart">♡</span>}
                           </React.Fragment>
@@ -803,10 +823,8 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                                 onClick={() => onSelectMember && onSelectMember(grandchild.id)}
                               >
                                 <MemberPhoto member={grandchild} />
-                                <strong>
-                                  {grandchild.date_of_death ? `${formatDisplayName(grandchild.name)} ז"ל` : formatDisplayName(grandchild.name)}
-                                </strong>
-                                <span>{personHint(grandchild, membersById)}</span>
+                                {renderMemberTitle(grandchild, mobileCompact)}
+                    {!mobileCompact && <span>{personHint(grandchild, membersById)}</span>}
                               </button>
                             ))}
                           </BoundedConnectorRow>

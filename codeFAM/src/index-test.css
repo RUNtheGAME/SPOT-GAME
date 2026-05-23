@@ -732,10 +732,96 @@
 .test-mobile-tree-screen {
   padding-inline: 0;
   padding-bottom: 0;
+  overflow-x: hidden;
 }
 
 .test-mobile-tree-screen .schematic-tree {
-  margin: 8px 10px;
+  margin: 8px 6px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact {
+  padding: 8px;
+  overflow-x: hidden;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-title-pill {
+  max-width: 100%;
+  padding: 8px 14px;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  white-space: normal;
+  text-align: center;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-family-block {
+  padding: 10px 8px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-family-head,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-pair-head,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-branches-row,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-grandchildren-row {
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  justify-content: center;
+  gap: 8px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-branch {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 10px 6px 8px;
+  gap: 6px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-spouse-dash {
+  width: 30px;
+  border-top-width: 2px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-heart {
+  font-size: 0.82rem;
+  min-width: 10px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-person-card,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-child-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  min-width: 86px;
+  max-width: 126px;
+  padding: 0;
+  gap: 4px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-person-card.active,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-child-card.active {
+  border: 0;
+  box-shadow: none;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-photo-frame {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-photo-placeholder {
+  font-size: 0.74rem;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-mobile-name {
+  margin: 0;
+  line-height: 1.08;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1f2937;
 }
 
 .test-mobile-updates-screen {
