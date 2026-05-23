@@ -1,3 +1,8 @@
+:root {
+  --test-mobile-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  --test-mobile-bottom-nav-base-height: 92px;
+}
+
 .test-page {
   min-height: 100vh;
   background: #eef2f7;
@@ -528,7 +533,9 @@
   display: grid;
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
+  min-height: 100dvh;
   max-height: 100vh;
+  max-height: 100dvh;
   overflow: hidden;
 }
 
@@ -578,7 +585,7 @@
 
 .test-mobile-screen {
   min-height: 100%;
-  padding: 0 12px 14px;
+  padding: 0 12px calc(14px + var(--test-mobile-safe-bottom));
 }
 
 .test-mobile-search-wrap {
@@ -694,7 +701,8 @@
 }
 
 .test-mobile-map-screen .offline-map-shell {
-  height: calc(100vh - 74px - 92px);
+  height: calc(100vh - 74px - var(--test-mobile-bottom-nav-base-height) - var(--test-mobile-safe-bottom));
+  height: calc(100dvh - 74px - var(--test-mobile-bottom-nav-base-height) - var(--test-mobile-safe-bottom));
   min-height: 420px;
   grid-template-columns: 1fr;
   grid-template-rows: minmax(0, 1fr) auto;
@@ -719,7 +727,7 @@
 }
 
 .test-mobile-updates-screen {
-  padding-bottom: 18px;
+  padding-bottom: calc(18px + var(--test-mobile-safe-bottom));
 }
 
 .test-mobile-updates-list {
@@ -754,13 +762,13 @@
   position: sticky;
   bottom: 0;
   z-index: 35;
-  min-height: 92px;
+  min-height: calc(var(--test-mobile-bottom-nav-base-height) + var(--test-mobile-safe-bottom));
   border-top: 1px solid #e4eaf4;
   background: #ffffff;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px;
-  padding: 8px 8px 10px;
+  padding: 8px 8px calc(10px + var(--test-mobile-safe-bottom));
 }
 
 .test-mobile-nav-btn {
