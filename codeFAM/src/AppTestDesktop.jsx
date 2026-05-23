@@ -166,6 +166,19 @@ function rowSubtitle(member) {
   return relationBits.join(' • ') || 'ללא פרטים נוספים';
 }
 
+function mobileParentsSubtitle(member) {
+  const father = formatDisplayName(member.father_name);
+  const mother = formatDisplayName(member.mother_name);
+  const gender = String(member.gender || '').trim().toLowerCase();
+  const isFemale = ['נקבה', 'female', 'f', 'woman', 'אשה', 'אישה'].includes(gender);
+  const relationWord = isFemale ? 'בת' : 'בן';
+
+  if (father && mother) return `${relationWord} ${father} ו${mother}`;
+  if (father) return `${relationWord} ${father}`;
+  if (mother) return `${relationWord} ${mother}`;
+  return 'ללא פרטי הורים';
+}
+
 function formatInDaysLabel(inDays) {
   if (inDays === 0) return 'היום';
   if (inDays > 0) return `בעוד ${inDays} ימים`;
@@ -216,7 +229,7 @@ export default function AppTestDesktop() {
 
   useEffect(() => {
     if (!isMobileViewport) return;
-    if (activeMenuTab === 'people' || activeMenuTab === 'map' || activeMenuTab === 'updates') return;
+    if (activeMenuTab === 'tree' || activeMenuTab === 'people' || activeMenuTab === 'map' || activeMenuTab === 'updates') return;
     setActiveMenuTab('people');
   }, [activeMenuTab, isMobileViewport]);
 
@@ -284,21 +297,22 @@ export default function AppTestDesktop() {
   );
   const showingMap = activeMenuTab === 'map';
   const menuItems = [
-    { id: 'tree', label: 'עץ משפחה', icon: '🌳' },
-    { id: 'people', label: 'אנשים', icon: '👥' },
-    { id: 'updates', label: 'עדכונים', icon: '🔔' },
-    { id: 'map', label: 'מפה', icon: '🗺️' },
-    { id: 'settings', label: 'הגדרות', icon: '⚙️' },
+    { id: 'tree', label: 'עץ משפחה', icon: GitBranch },
+    { id: 'people', label: 'אנשים', icon: Users },
+    { id: 'updates', label: 'עדכונים', icon: Bell },
+    { id: 'map', label: 'מפה', icon: MapPinned },
+    { id: 'settings', label: 'הגדרות', icon: UserRound },
   ];
   const mobileMenuItems = [
-    { id: 'tree', label: 'עץ', icon: GitBranch, enabled: false },
+    { id: 'tree', label: 'עץ', icon: GitBranch, enabled: true },
     { id: 'people', label: 'אנשים', icon: Users, enabled: true },
     { id: 'updates', label: 'עדכונים', icon: Bell, enabled: true },
     { id: 'map', label: 'מפה', icon: MapPinned, enabled: true },
-    { id: 'profile', label: 'פרופיל', icon: UserRound, enabled: false },
+    { id: 'settings', label: 'הגדרות', icon: UserRound, enabled: false },
   ];
 
   const mobileHeaderTitle = useMemo(() => {
+    if (activeMenuTab === 'tree') return 'מרשם קיים';
     if (activeMenuTab === 'people') return 'אנשים';
     if (activeMenuTab === 'updates') return 'עדכונים';
     if (activeMenuTab === 'map') return 'מפה';
@@ -321,6 +335,7 @@ export default function AppTestDesktop() {
   };
 
   if (isMobileViewport) {
+    const showTreeScreen = activeMenuTab === 'tree';
     const showPeopleScreen = activeMenuTab === 'people';
     const showMapScreen = activeMenuTab === 'map';
     const showUpdatesScreen = activeMenuTab === 'updates';
@@ -340,6 +355,17 @@ export default function AppTestDesktop() {
         </header>
 
         <main className="test-mobile-main">
+          {showTreeScreen && (
+            <section className="test-mobile-screen test-mobile-tree-screen">
+              <FamilySchematicDiagram
+                members={treeMembers}
+                selectedMemberId={selectedMemberId}
+                onSelectMember={setSelectedMemberId}
+                mobileCompact
+              />
+            </section>
+          )}
+
           {showPeopleScreen && (
             <section className="test-mobile-screen">
               <div className="test-mobile-search-wrap">
@@ -366,7 +392,7 @@ export default function AppTestDesktop() {
                     <span className="test-mobile-avatar">{renderListAvatar(member)}</span>
                     <span className="test-mobile-member-meta">
                       <strong>{formatDisplayName(member.name)}</strong>
-                      <small>{rowSubtitle(member)}</small>
+                      <small>{mobileParentsSubtitle(member)}</small>
                     </span>
                   </button>
                 ))}
@@ -380,6 +406,7 @@ export default function AppTestDesktop() {
                 members={treeMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
+                mobileCompact
               />
             </section>
           )}
@@ -457,17 +484,22 @@ export default function AppTestDesktop() {
 
         <div className="test-topbar-main">
           <nav className="test-topbar-menu" aria-label="תפריט ראשי">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={activeMenuTab === item.id ? 'test-menu-btn active' : 'test-menu-btn'}
-                onClick={() => setActiveMenuTab(item.id)}
-              >
-                <span className="test-menu-btn-icon" aria-hidden="true">{item.icon}</span>
-                <span className="test-menu-btn-label">{item.label}</span>
-              </button>
-            ))}
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={activeMenuTab === item.id ? 'test-menu-btn active' : 'test-menu-btn'}
+                  onClick={() => setActiveMenuTab(item.id)}
+                >
+                  <span className="test-menu-btn-icon" aria-hidden="true">
+                    <Icon size={18} strokeWidth={2.1} />
+                  </span>
+                  <span className="test-menu-btn-label">{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           <label className="test-topbar-search">
@@ -498,7 +530,7 @@ export default function AppTestDesktop() {
                     <span className="test-avatar">{initials(member.name)}</span>
                     <span className="test-member-meta">
                       <strong>{formatDisplayName(member.name)}</strong>
-                      <small>{rowSubtitle(member)}</small>
+                      <small>{mobileParentsSubtitle(member)}</small>
                     </span>
                   </button>
                 ))}
@@ -559,12 +591,14 @@ export default function AppTestDesktop() {
                 members={treeMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
+                mobileCompact
               />
             ) : (
               <FamilySchematicDiagram
                 members={treeMembers}
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
+                mobileCompact
               />
             )}
           </section>

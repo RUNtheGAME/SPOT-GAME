@@ -29,7 +29,7 @@
 .test-topbar-brand h1 {
   margin: 0;
   font-size: 2rem;
-  line-height: 1.1;
+  line-height: 0.95;
 }
 
 .test-topbar-brand p {
@@ -141,8 +141,11 @@
 }
 
 .test-menu-btn-icon {
-  font-size: 1rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: currentColor;
 }
 
 .test-menu-btn-label {
@@ -674,12 +677,12 @@
 .test-mobile-member-meta {
   min-width: 0;
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 
 .test-mobile-member-meta strong {
-  font-size: 2.05rem;
-  line-height: 1.1;
+  font-size: 1.74rem;
+  line-height: 0.95;
   color: #111827;
   white-space: nowrap;
   overflow: hidden;
@@ -687,8 +690,8 @@
 }
 
 .test-mobile-member-meta small {
-  font-size: 1.48rem;
-  line-height: 1.15;
+  font-size: 1.26rem;
+  line-height: 1;
   color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
@@ -724,6 +727,15 @@
 
 .test-mobile-map-screen .offline-map-panel {
   max-height: 40vh;
+}
+
+.test-mobile-tree-screen {
+  padding-inline: 0;
+  padding-bottom: 0;
+}
+
+.test-mobile-tree-screen .schematic-tree {
+  margin: 8px 10px;
 }
 
 .test-mobile-updates-screen {
