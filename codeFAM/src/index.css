@@ -725,6 +725,12 @@ textarea {
   gap: 10px;
 }
 
+.schematic-family-block.schematic-family-block-founders {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .schematic-title-wrap {
   display: flex;
   justify-content: center;
@@ -750,10 +756,13 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
   gap: 10px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  row-gap: 8px;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  overflow-y: visible;
   padding-bottom: 2px;
   margin-inline: auto;
 }
@@ -762,12 +771,22 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
   gap: 10px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  row-gap: 8px;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  overflow-y: visible;
   padding-bottom: 2px;
   margin-inline: auto;
+}
+
+.schematic-family-head .schematic-person-card,
+.schematic-pair-head .schematic-child-card {
+  min-width: 122px;
+  max-width: min(46%, 152px);
+  flex: 1 1 132px;
 }
 
 .schematic-heart {
@@ -779,8 +798,8 @@ textarea {
 }
 
 .schematic-spouse-dash {
-  width: clamp(54px, 9vw, 168px);
-  border-top: 4px dashed #e48ab7;
+  width: clamp(24px, 5vw, 72px);
+  border-top: 3px dashed #e48ab7;
   opacity: 0.96;
   align-self: center;
   flex: 0 0 auto;
@@ -805,12 +824,21 @@ textarea {
   font-size: 1.02rem;
 }
 
+.schematic-mobile-name {
+  margin: 0;
+  line-height: 1.08;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #1f2937;
+  display: block;
+}
+
 .schematic-photo-frame {
   width: 58px;
   height: 58px;
   margin: 0 auto;
   border: 2px solid #d2dbe8;
-  border-radius: 14px;
+  border-radius: 999px;
   background: #f4f7fc;
   overflow: hidden;
   display: grid;
@@ -848,6 +876,17 @@ textarea {
   border-color: #c1c6d0;
   background: #fff;
 }
+
+.schematic-person-card.female .schematic-photo-frame,
+.schematic-child-card.female .schematic-photo-frame {
+  border-color: #e9bfd9;
+}
+
+.schematic-person-card.male .schematic-photo-frame,
+.schematic-child-card.male .schematic-photo-frame {
+  border-color: #6a9fe7;
+}
+
 
 .schematic-person-card.active,
 .schematic-child-card.active {
@@ -977,14 +1016,17 @@ textarea {
 
 .schematic-branches-row {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   padding-top: 12px;
   display: flex;
   justify-content: center;
   align-items: stretch;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  overflow-y: visible;
   gap: 12px;
+  row-gap: 10px;
   padding-bottom: 6px;
   margin-inline: auto;
 }
@@ -1005,8 +1047,10 @@ textarea {
   background: #fcfcfe;
   position: relative;
   padding: 12px 10px 10px;
-  min-width: 360px;
-  max-width: 560px;
+  min-width: 280px;
+  width: min(100%, 360px);
+  max-width: 100%;
+  flex: 1 1 300px;
   display: grid;
   gap: 8px;
 }
@@ -1055,13 +1099,16 @@ textarea {
 
 .schematic-grandchildren-row {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   padding-top: 12px;
   display: flex;
   justify-content: center;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  gap: 4px;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  overflow-y: visible;
+  gap: 6px;
+  row-gap: 6px;
   padding-bottom: 4px;
   margin-inline: auto;
 }
@@ -1078,6 +1125,9 @@ textarea {
 
 .schematic-grandchildren-row > .schematic-child-card {
   position: relative;
+  flex: 1 1 128px;
+  min-width: 118px;
+  max-width: 162px;
 }
 
 .schematic-grandchildren-row > .schematic-child-card::before {

@@ -274,6 +274,17 @@
   max-width: 168px;
 }
 
+.test-schematic-col .schematic-family-head .schematic-person-card,
+.test-schematic-col .schematic-pair-head .schematic-child-card {
+  min-width: 112px;
+  max-width: min(46%, 142px);
+  flex: 1 1 122px;
+}
+
+.test-schematic-col .schematic-spouse-dash {
+  width: clamp(20px, 4vw, 58px);
+}
+
 .test-schematic-col .schematic-canvas-root {
   margin: 8px;
   padding: 8px;
@@ -580,6 +591,28 @@
   cursor: pointer;
 }
 
+.test-mobile-header-tree {
+  min-height: 80px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.test-mobile-header-switch.schematic-view-switch {
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.test-mobile-header-switch .schematic-view-btn {
+  min-width: 128px;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
 .test-mobile-main {
   min-height: 0;
   overflow: auto;
@@ -636,12 +669,12 @@
   border: 0;
   border-bottom: 1px solid #edf1f7;
   background: #ffffff;
-  min-height: 106px;
+  min-height: 90px;
   display: flex;
   align-items: center;
   gap: 14px;
   text-align: right;
-  padding: 14px 4px;
+  padding: 8px 4px;
   cursor: pointer;
 }
 
@@ -759,6 +792,12 @@
   overflow: hidden;
 }
 
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-family-block.schematic-family-block-founders {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-family-head,
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-pair-head,
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-branches-row,
@@ -805,11 +844,24 @@
 }
 
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-photo-frame {
-  width: 44px;
-  height: 44px;
+  width: 51px;
+  height: 51px;
   border: 0;
   border-radius: 999px;
   background: transparent;
+}
+
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-person-card.female .schematic-photo-frame,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-child-card.female .schematic-photo-frame {
+  border: 2px solid #e9bfd9;
+  background: #fff7fc;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-person-card.male .schematic-photo-frame,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-child-card.male .schematic-photo-frame {
+  border: 2px solid #6a9fe7;
+  background: #f4f8ff;
 }
 
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-photo-placeholder {
@@ -822,6 +874,51 @@
   font-size: 0.9rem;
   font-weight: 800;
   color: #1f2937;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-branches-row,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-grandchildren-row {
+  gap: 4px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-grandchildren-row {
+  width: 100%;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-grandchildren-row > .schematic-child-card {
+  flex: 0 1 calc((100% - 12px) / 4);
+  max-width: calc((100% - 12px) / 4);
+  min-width: 0;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-person-card,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-child-card {
+  border-width: 2px;
+  border-style: solid;
+  box-shadow: none;
+  min-width: 118px;
+  max-width: 118px;
+  padding: 11px 7px 9px;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-person-card.female,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-child-card.female {
+  border-color: #e9bfd9;
+  background: #fff7fc;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-person-card.male,
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-child-card.male {
+  border-color: #c1c6d0;
+  background: #fff;
+}
+
+.test-mobile-tree-screen .schematic-tree.schematic-mobile-compact.schematic-mode-canvasVertical .schematic-photo-frame {
+  width: 64px;
+  height: 64px;
+  border: 2px solid #d2dbe8;
+  border-radius: 999px;
+  background: #f4f7fc;
 }
 
 .test-mobile-updates-screen {

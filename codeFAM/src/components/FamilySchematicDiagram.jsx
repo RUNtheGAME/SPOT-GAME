@@ -31,13 +31,21 @@ function formatDisplayName(value) {
 
 function sortMembers(a, b) {
   if (a.birth_date && b.birth_date) {
-    const dateDiff = new Date(a.birth_date) - new Date(b.birth_date);
-    if (dateDiff !== 0) return dateDiff;
+    const aDate = new Date(a.birth_date).getTime();
+    const bDate = new Date(b.birth_date).getTime();
+    if (Number.isFinite(aDate) && Number.isFinite(bDate)) {
+      const dateDiff = aDate - bDate;
+      if (dateDiff !== 0) return dateDiff;
+    }
   }
 
   if (a.birth_year && b.birth_year) {
-    const yearDiff = Number(a.birth_year) - Number(b.birth_year);
-    if (yearDiff !== 0) return yearDiff;
+    const aYear = Number(a.birth_year);
+    const bYear = Number(b.birth_year);
+    if (Number.isFinite(aYear) && Number.isFinite(bYear)) {
+      const yearDiff = aYear - bYear;
+      if (yearDiff !== 0) return yearDiff;
+    }
   }
 
   return String(a.name || '').localeCompare(String(b.name || ''), 'he');
@@ -222,13 +230,6 @@ function isFemale(member) {
   return value === 'נקבה' || value === 'female';
 }
 
-function personHint(member, membersById) {
-  const spouseName = member.spouse_id ? membersById[member.spouse_id]?.name : '';
-  const fallback = spouseName || member.spouse_name || member.father_name || member.mother_name || '';
-  const cleaned = formatDisplayName(fallback);
-  return cleaned || ' ';
-}
-
 function memberInitials(name) {
   const words = String(formatDisplayName(name) || '').split(/\s+/).filter(Boolean);
   if (words.length === 0) return '👤';
@@ -242,17 +243,15 @@ function splitMemberName(name) {
   return { firstName: words[0], lastName: words.slice(1).join(' ') };
 }
 
-function renderMemberTitle(member, mobileCompact) {
+function renderMemberTitle(member) {
   const displayName = formatDisplayName(member?.name);
   const deceasedSuffix = member?.date_of_death ? ' ז"ל' : '';
-
-  if (!mobileCompact) {
-    return <strong>{deceasedSuffix ? `${displayName}${deceasedSuffix}` : displayName}</strong>;
-  }
-
   const { firstName, lastName } = splitMemberName(member?.name);
-  const firstLine = deceasedSuffix && !lastName ? `${firstName || displayName}${deceasedSuffix}` : firstName || displayName;
-  const secondLine = deceasedSuffix && lastName ? `${lastName}${deceasedSuffix}` : lastName;
+
+  const firstLineBase = firstName || displayName;
+  const secondLineBase = lastName || '';
+  const firstLine = deceasedSuffix && !secondLineBase ? `${firstLineBase}${deceasedSuffix}` : firstLineBase;
+  const secondLine = deceasedSuffix && secondLineBase ? `${secondLineBase}${deceasedSuffix}` : secondLineBase;
 
   return (
     <strong className="schematic-mobile-name">
@@ -388,6 +387,106 @@ function minParentGeneration(family) {
   return Math.min(...generations);
 }
 
+function anchorGenerationOneParent(family) {
+  const generationOneParents = family.parents
+    .filter((member) => normalizeGeneration(member.generation) === 1)
+    .sort(sortMembers);
+  if (generationOneParents.length > 0) return generationOneParents[0];
+  return [...family.parents].sort(sortMembers)[0] || null;
+}
+
+function isSameDisplayPerson(a, b) {
+  if (!a || !b) return false;
+  if (a.id && b.id && a.id === b.id) return true;
+  return formatDisplayName(a.name) === formatDisplayName(b.name);
+}
+
+function orderFamiliesByFounderChildrenAge(families, foundersFamily) {
+  const remainingFamilies = new Map(families.map((family) => [family.key, family]));
+  const orderedFamilies = [];
+
+  const founderChildren = [...(foundersFamily?.children || [])]
+    .map((branch) => branch?.child)
+    .filter(Boolean)
+    .sort(sortMembers);
+
+  founderChildren.forEach((child) => {
+    const match = [...remainingFamilies.values()].find((family) => {
+      return family.parents.some((parent) => isSameDisplayPerson(parent, child));
+    });
+    if (!match) return;
+    orderedFamilies.push(match);
+    remainingFamilies.delete(match.key);
+  });
+
+  const fallbackOrdered = [...remainingFamilies.values()].sort((a, b) => {
+    const aAnchor = anchorGenerationOneParent(a);
+    const bAnchor = anchorGenerationOneParent(b);
+    if (aAnchor && bAnchor) {
+      const byAge = sortMembers(aAnchor, bAnchor);
+      if (byAge !== 0) return byAge;
+    } else if (aAnchor) {
+      return -1;
+    } else if (bAnchor) {
+      return 1;
+    }
+    return compareFamilyOrder(a, b);
+  });
+
+  return [...orderedFamilies, ...fallbackOrdered];
+}
+
+function orderFamiliesForMobileDisplay(families) {
+  const generationZeroFamilies = families.filter((family) => minParentGeneration(family) === 0);
+  const primaryFounderFamily = generationZeroFamilies.length > 0
+    ? [...generationZeroFamilies].sort(compareFamilyOrder)[0]
+    : null;
+
+  const founderNameSet = new Set(
+    (primaryFounderFamily?.parents || [])
+      .map((member) => formatDisplayName(member.name))
+      .filter(Boolean)
+  );
+
+  const anchorForFamily = (family) => {
+    const generationOneParents = family.parents
+      .filter((member) => normalizeGeneration(member.generation) === 1)
+      .sort(sortMembers);
+
+    if (generationOneParents.length === 0) {
+      return [...family.parents].sort(sortMembers)[0] || null;
+    }
+
+    if (founderNameSet.size > 0) {
+      const linked = generationOneParents.find((member) => {
+        const fatherName = formatDisplayName(member.father_name);
+        const motherName = formatDisplayName(member.mother_name);
+        return (fatherName && founderNameSet.has(fatherName)) || (motherName && founderNameSet.has(motherName));
+      });
+      if (linked) return linked;
+    }
+
+    return generationOneParents[0];
+  };
+
+  return [...families].sort((a, b) => {
+    const aGen = minParentGeneration(a);
+    const bGen = minParentGeneration(b);
+    if (aGen !== bGen) return aGen - bGen;
+
+    if (aGen === 1 && bGen === 1) {
+      const aAnchor = anchorForFamily(a);
+      const bAnchor = anchorForFamily(b);
+      if (aAnchor && bAnchor) {
+        const byAge = sortMembers(aAnchor, bAnchor);
+        if (byAge !== 0) return byAge;
+      }
+    }
+
+    return compareFamilyOrder(a, b);
+  });
+}
+
 function createPairForMember(member, byId) {
   const spouse = member.spouse_id ? byId[member.spouse_id] : null;
   if (!spouse) return [member];
@@ -430,8 +529,28 @@ function orderPairForDisplay(pair, childMemberIds) {
   return [lead, ...pair.filter((member) => member.id !== lead.id)];
 }
 
-export default function FamilySchematicDiagram({ members, selectedMemberId, onSelectMember, mobileCompact = false }) {
-  const [diagramMode, setDiagramMode] = useState('classic');
+export default function FamilySchematicDiagram({
+  members,
+  selectedMemberId,
+  onSelectMember,
+  mobileCompact = false,
+  showViewSwitch = true,
+  diagramMode: controlledDiagramMode,
+  onDiagramModeChange,
+}) {
+  const isControlledDiagramMode = typeof controlledDiagramMode === 'string' && controlledDiagramMode.length > 0;
+  const [internalDiagramMode, setInternalDiagramMode] = useState('classic');
+  const diagramMode = isControlledDiagramMode ? controlledDiagramMode : internalDiagramMode;
+  const setDiagramMode = useCallback(
+    (nextMode) => {
+      if (isControlledDiagramMode) {
+        onDiagramModeChange?.(nextMode);
+        return;
+      }
+      setInternalDiagramMode(nextMode);
+    },
+    [isControlledDiagramMode, onDiagramModeChange]
+  );
   const treeContainerRef = useRef(null);
 
   const sourceMembers = useMemo(() => {
@@ -548,11 +667,28 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
     });
 
     let rootFamilies = [];
+    const generationZeroFamilies = resolved.filter((family) => minParentGeneration(family) === 0);
     const generationOneFamilies = resolved.filter((family) => minParentGeneration(family) === 1);
-    if (generationOneFamilies.length > 0) {
+
+    if (generationZeroFamilies.length > 0 && generationOneFamilies.length > 0) {
+      const foundersFamily = [...generationZeroFamilies].sort(compareFamilyOrder)[0];
+      const foundersHeader = {
+        ...foundersFamily,
+        key: 'founders_' + foundersFamily.key,
+        children: [],
+        isFoundersHeader: true,
+      };
+
+      const orderedChildrenFamilies = orderFamiliesByFounderChildrenAge(
+        generationOneFamilies,
+        foundersFamily
+      );
+
+      rootFamilies = [foundersHeader, ...orderedChildrenFamilies];
+    } else if (generationOneFamilies.length > 0) {
       // Prefer generation-1 families as the starting layer so generation-3 children
       // are rendered directly under their generation-2 parents (e.g. אלדד טל -> שני/נוי/אור).
-      rootFamilies = generationOneFamilies;
+      rootFamilies = [...generationOneFamilies].sort(compareFamilyOrder);
     } else {
       // Fallback: keep only true roots to avoid duplicate blocks.
       rootFamilies = resolved.filter((family) => {
@@ -591,6 +727,7 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
           ...family,
           key: pairKey,
           children: normalizedChildren,
+          isFoundersHeader: Boolean(family.isFoundersHeader),
         });
         return;
       }
@@ -621,10 +758,15 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
       });
 
       existing.children = [...branchByChild.values()].sort((a, b) => sortMembers(a.child, b.child));
+      existing.isFoundersHeader = Boolean(existing.isFoundersHeader || family.isFoundersHeader);
     });
 
-    return [...mergedByPair.values()].sort(compareFamilyOrder);
-  }, [diagramMembers, membersById, resolveParentsForMember]);
+    if (mobileCompact) {
+      return orderFamiliesForMobileDisplay([...mergedByPair.values()]);
+    }
+
+    return [...mergedByPair.values()];
+  }, [diagramMembers, membersById, resolveParentsForMember, mobileCompact]);
 
   useLayoutEffect(() => {
     if (diagramMode !== 'classic' || !diagramSelectedMemberId) return undefined;
@@ -700,29 +842,31 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
   }
 
   return (
-    <div className={mobileCompact ? "schematic-tree schematic-mobile-compact" : "schematic-tree"} ref={treeContainerRef}>
+    <div className={mobileCompact ? `schematic-tree schematic-mobile-compact schematic-mode-${diagramMode}` : "schematic-tree"} ref={treeContainerRef}>
       {(!members || members.length === 0) && (
         <p className="tree-diagram-help">
           מציג כרגע נתוני גיבוי מהקובץ משפחת_טל.xlsx, כי לא נטענו נתוני FamilyMember מהשרת.
         </p>
       )}
 
-      <div className="schematic-view-switch">
-        <button
-          type="button"
-          className={diagramMode === 'classic' ? 'schematic-view-btn active' : 'schematic-view-btn'}
-          onClick={() => setDiagramMode('classic')}
-        >
-          מרשם קיים
-        </button>
-        <button
-          type="button"
-          className={diagramMode === 'canvasVertical' ? 'schematic-view-btn active' : 'schematic-view-btn'}
-          onClick={() => setDiagramMode('canvasVertical')}
-        >
-          משטח גדול אנכי
-        </button>
-      </div>
+      {showViewSwitch && (
+        <div className="schematic-view-switch">
+          <button
+            type="button"
+            className={diagramMode === 'classic' ? 'schematic-view-btn active' : 'schematic-view-btn'}
+            onClick={() => setDiagramMode('classic')}
+          >
+            מרשם קיים
+          </button>
+          <button
+            type="button"
+            className={diagramMode === 'canvasVertical' ? 'schematic-view-btn active' : 'schematic-view-btn'}
+            onClick={() => setDiagramMode('canvasVertical')}
+          >
+            מרשם גדול אנכי
+          </button>
+        </div>
+      )}
 
       {diagramMode === 'canvasVertical' ? (
         <FamilySchematicCanvasVertical
@@ -732,7 +876,10 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
         />
       ) : (
         families.map((family) => (
-          <section className="schematic-family-block" key={family.key}>
+          <section
+            className={`schematic-family-block${family.isFoundersHeader ? ' schematic-family-block-founders' : ''}`}
+            key={family.key}
+          >
             <div className="schematic-title-wrap">
               <h4 className="schematic-title-pill">{familyTitle(family.parents)}</h4>
             </div>
@@ -746,8 +893,7 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                     onClick={() => onSelectMember && onSelectMember(spouse.id)}
                   >
                     <MemberPhoto member={spouse} />
-                    {renderMemberTitle(spouse, mobileCompact)}
-                    {!mobileCompact && <span>{personHint(spouse, membersById)}</span>}
+                    {renderMemberTitle(spouse)}
                   </button>
                   <span className="schematic-spouse-dash" />
                 </React.Fragment>
@@ -760,17 +906,14 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                     onClick={() => onSelectMember && onSelectMember(member.id)}
                   >
                     <MemberPhoto member={member} />
-                    {renderMemberTitle(member, mobileCompact)}
-                    {!mobileCompact && <span>{personHint(member, membersById)}</span>}
+                    {renderMemberTitle(member)}
                   </button>
                   {index === 0 && family.parents.length > 1 && <span className="schematic-heart">♡</span>}
                 </React.Fragment>
               ))}
             </div>
 
-            {family.children.length === 0 ? (
-              <p className="schematic-empty">אין ילדים מקושרים למשפחה זו.</p>
-            ) : (
+            {family.children.length > 0 && (
               <>
                 <div className="schematic-parent-stem" />
                 <BoundedConnectorRow className="schematic-branches-row" itemSelector=".schematic-branch">
@@ -781,12 +924,11 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                           <React.Fragment key={`secondary_branch_${branch.child.id}_${spouse.id}`}>
                             <button
                               type="button"
-                              className={toCardClass(spouse, diagramSelectedMemberId, 'schematic-child-card')}
+                              className={toCardClass(spouse, diagramSelectedMemberId, 'schematic-child-card') }
                               onClick={() => onSelectMember && onSelectMember(spouse.id)}
                             >
                               <MemberPhoto member={spouse} />
-                              {renderMemberTitle(spouse, mobileCompact)}
-                    {!mobileCompact && <span>{personHint(spouse, membersById)}</span>}
+                              {renderMemberTitle(spouse)}
                             </button>
                             <span className="schematic-spouse-dash" />
                           </React.Fragment>
@@ -800,15 +942,14 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                               onClick={() => onSelectMember && onSelectMember(member.id)}
                             >
                               <MemberPhoto member={member} />
-                              {renderMemberTitle(member, mobileCompact)}
-                    {!mobileCompact && <span>{personHint(member, membersById)}</span>}
+                              {renderMemberTitle(member)}
                             </button>
                             {index === 0 && branch.pair.length > 1 && <span className="schematic-heart">♡</span>}
                           </React.Fragment>
                         ))}
                       </div>
 
-                      {branch.grandchildren.length > 0 ? (
+                      {branch.grandchildren.length > 0 && (
                         <>
                           <div className="schematic-branch-stem" />
                           <BoundedConnectorRow
@@ -823,14 +964,11 @@ export default function FamilySchematicDiagram({ members, selectedMemberId, onSe
                                 onClick={() => onSelectMember && onSelectMember(grandchild.id)}
                               >
                                 <MemberPhoto member={grandchild} />
-                                {renderMemberTitle(grandchild, mobileCompact)}
-                    {!mobileCompact && <span>{personHint(grandchild, membersById)}</span>}
+                                {renderMemberTitle(grandchild)}
                               </button>
                             ))}
                           </BoundedConnectorRow>
                         </>
-                      ) : (
-                        <p className="schematic-empty small">אין דור המשך מקושר</p>
                       )}
                     </article>
                   ))}

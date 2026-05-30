@@ -197,6 +197,7 @@ export default function AppTestDesktop() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeMenuTab, setActiveMenuTab] = useState(() => (detectMobileViewport() ? 'people' : 'map'));
   const [isMobileViewport, setIsMobileViewport] = useState(() => detectMobileViewport());
+  const [mobileTreeDiagramMode, setMobileTreeDiagramMode] = useState('classic');
 
   useEffect(() => {
     const storedPayload = parseStoredMembers(window.localStorage.getItem(LOCAL_MEMBERS_STORAGE_KEY));
@@ -249,9 +250,19 @@ export default function AppTestDesktop() {
   }, [treeMembers]);
 
   const filteredMembers = useMemo(() => {
+    const uniqueMembers = [];
+    const seenNames = new Set();
+    treeMembers.forEach((member) => {
+      const normalizedKey = normalizeName(formatDisplayName(member.name)).toLowerCase();
+      const key = normalizedKey || `id:${member.id}`;
+      if (seenNames.has(key)) return;
+      seenNames.add(key);
+      uniqueMembers.push(member);
+    });
+
     const needle = searchTerm.trim().toLowerCase();
-    if (!needle) return treeMembers;
-    return treeMembers.filter((member) => {
+    if (!needle) return uniqueMembers;
+    return uniqueMembers.filter((member) => {
       return [member.name, member.city, member.spouse_name, member.father_name, member.mother_name]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
@@ -342,16 +353,37 @@ export default function AppTestDesktop() {
 
     return (
       <div className="test-page test-mobile-page" dir="rtl">
-        <header className="test-mobile-header">
-          <h1>{mobileHeaderTitle}</h1>
-          <button
-            type="button"
-            className="test-mobile-header-icon"
-            aria-label="חיפוש"
-            onClick={() => setActiveMenuTab('people')}
-          >
-            <Search size={26} strokeWidth={2.1} />
-          </button>
+        <header className={showTreeScreen ? 'test-mobile-header test-mobile-header-tree' : 'test-mobile-header'}>
+          {showTreeScreen ? (
+            <div className="test-mobile-header-switch schematic-view-switch" role="tablist" aria-label="מצב תצוגת מרשם">
+              <button
+                type="button"
+                className={mobileTreeDiagramMode === 'classic' ? 'schematic-view-btn active' : 'schematic-view-btn'}
+                onClick={() => setMobileTreeDiagramMode('classic')}
+              >
+                מרשם קיים
+              </button>
+              <button
+                type="button"
+                className={mobileTreeDiagramMode === 'canvasVertical' ? 'schematic-view-btn active' : 'schematic-view-btn'}
+                onClick={() => setMobileTreeDiagramMode('canvasVertical')}
+              >
+                מרשם גדול אנכי
+              </button>
+            </div>
+          ) : (
+            <>
+              <h1>{mobileHeaderTitle}</h1>
+              <button
+                type="button"
+                className="test-mobile-header-icon"
+                aria-label="חיפוש"
+                onClick={() => setActiveMenuTab('people')}
+              >
+                <Search size={26} strokeWidth={2.1} />
+              </button>
+            </>
+          )}
         </header>
 
         <main className="test-mobile-main">
@@ -362,6 +394,9 @@ export default function AppTestDesktop() {
                 selectedMemberId={selectedMemberId}
                 onSelectMember={setSelectedMemberId}
                 mobileCompact
+                showViewSwitch={false}
+                diagramMode={mobileTreeDiagramMode}
+                onDiagramModeChange={setMobileTreeDiagramMode}
               />
             </section>
           )}

@@ -1,7 +1,13 @@
 // Auto-generated from משפחת_טל.xlsx column R. Do not edit manually.
 export const XLSX_COLUMN_R_IMAGE_BY_NAME = {
   "מוטי אלבו": "/family-images/מוטי_אלבו_row_121.jpeg",
+  "אלדד טל": "/family-images/אלדד_טל_row_127.jpeg",
+  "עמרי טל": "/family-images/עמרי_טל_row_128.png",
   "שמעון (2/4) טל": "/family-images/שמעון_2_4_טל_row_129.jpeg",
+  "ישי טל": "/family-images/ישי_טל_row_135.jpeg",
+  "מירב טל": "/family-images/מירב_טל_row_136.jpeg",
+  "ענת (2/2) טל": "/family-images/ענת_2_2_טל_row_137.jpeg",
+  "רחל (2/3) טל-שלם": "/family-images/רחל_2_3_טל_שלם_row_139.jpeg",
   "אוריין טל-אלבו": "/family-images/אוריין_טל_אלבו_row_146.jpeg",
   "אמיר טל": "/family-images/אמיר_טל_row_147.jpeg",
   "ניר רן": "/family-images/ניר_רן_row_148.jpeg",
@@ -23,10 +29,13 @@ export const XLSX_COLUMN_R_IMAGE_BY_NAME = {
   "דורית טל": "/family-images/דורית_טל_row_165.jpeg",
   "אילנה (2/2) טל-אורן": "/family-images/אילנה_2_2_טל_אורן_row_166.jpeg",
   "מוקי אורן": "/family-images/מוקי_אורן_row_167.jpeg",
+  "דויד (1/4)-יאיר טל (פ' א')": "/family-images/דויד_1_4_יאיר_טל_פ_א_row_168.jpeg",
   "יפה ראש-טל": "/family-images/יפה_ראש_טל_row_169.jpeg",
   "דויד-יאיר (1/4) טל (פ' ב')": "/family-images/דויד_יאיר_1_4_טל_פ_ב_row_170.jpeg",
   "עמי (1/2) טל": "/family-images/עמי_1_2_טל_row_172.jpeg",
+  "ליאת דקל-טל": "/family-images/ליאת_דקל_טל_row_173.jpeg",
   "אורלי מזרחי-טל": "/family-images/אורלי_מזרחי_טל_row_174.jpeg",
+  "חיים טל": "/family-images/חיים_טל_row_175.jpeg",
   "שמעון (1/4) טל": "/family-images/שמעון_1_4_טל_row_177.jpeg",
   "רחל (1/3) טל": "/family-images/רחל_1_3_טל_row_178.jpeg"
 };
