@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "sync:xlsx-images": "node ./scripts/sync-xlsx-column-r-images.cjs",
-    "build": "npm run sync:xlsx-images && vite build && node ./scripts/generate-offline-html.cjs",
+    "build": "npm run sync:albums && npm run sync:xlsx-images && vite build && node ./scripts/generate-offline-html.cjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync:albums": "node ./scripts/generate-album-folders-manifest.cjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.28",

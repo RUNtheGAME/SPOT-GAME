@@ -14,6 +14,35 @@ function resolveAssetPath(distDir, assetRef) {
   return path.join(distDir, normalized);
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeAssetRef(assetRef) {
+  return String(assetRef || '').replace(/^\.\//, '').replace(/^\//, '');
+}
+
+function patchInlineImportMetaFallback(jsText, jsRef) {
+  const normalizedRef = normalizeAssetRef(jsRef);
+  const jsFileName = path.basename(normalizedRef);
+  if (!jsFileName) return jsText;
+
+  const singleQuotedNeedle = `new URL('${jsFileName}', document.baseURI).href`;
+  const doubleQuotedNeedle = `new URL(\"${jsFileName}\", document.baseURI).href`;
+  const replacement = `new URL('${normalizedRef}', document.baseURI).href`;
+
+  let patched = jsText.split(singleQuotedNeedle).join(replacement);
+  patched = patched.split(doubleQuotedNeedle).join(replacement);
+
+  const genericPattern = new RegExp(
+    `new URL\\((['\"])${escapeRegExp(jsFileName)}\\1,\\s*document\\.baseURI\\)\\.href`,
+    'g'
+  );
+  patched = patched.replace(genericPattern, replacement);
+
+  return patched;
+}
+
 async function bundleEntryJavaScriptToIife(distDir, jsRef, bundleName) {
   const inputPath = resolveAssetPath(distDir, jsRef);
   const bundle = await rollup({ input: inputPath });
@@ -68,12 +97,23 @@ ${jsText}
 `;
 }
 
+function copyDistAssetsToRoot(rootDir, distDir) {
+  const distAssetsPath = path.join(distDir, 'assets');
+  if (!fs.existsSync(distAssetsPath)) return;
+
+  const rootAssetsPath = path.join(rootDir, 'assets');
+  fs.rmSync(rootAssetsPath, { recursive: true, force: true });
+  fs.cpSync(distAssetsPath, rootAssetsPath, { recursive: true });
+}
+
 async function generateOfflineForEntry({ rootDir, distDir, entryHtmlName, offlineFileName, offlineTitle, bundleName }) {
   const distEntryPath = path.join(distDir, entryHtmlName);
   const entryHtml = readFileOrThrow(distEntryPath);
   const { jsRef, cssRefs } = extractAssetsFromEntryHtml(entryHtml);
 
-  const jsText = await bundleEntryJavaScriptToIife(distDir, jsRef, bundleName);
+  const bundledJsText = await bundleEntryJavaScriptToIife(distDir, jsRef, bundleName);
+  const jsText = patchInlineImportMetaFallback(bundledJsText, jsRef);
+
   const cssText = cssRefs
     .map((cssRef) => readFileOrThrow(resolveAssetPath(distDir, cssRef)))
     .join('\n');
@@ -120,6 +160,8 @@ async function generateOfflineHtml() {
       bundleName: 'CodeTalIndexTestOffline',
     }),
   ];
+
+  copyDistAssetsToRoot(rootDir, distDir);
 
   generated.forEach((entry) => {
     console.log(

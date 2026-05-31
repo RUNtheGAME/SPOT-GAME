@@ -2,13 +2,82 @@ import React, { useEffect, useMemo, useState } from 'react';
 import FamilySchematicDiagram from '@/components/FamilySchematicDiagram';
 import FamilyWorldMap from '@/components/FamilyWorldMap';
 import { RESOLVED_FAMILY_MEMBERS_SEED } from '@/data/familyMembersResolvedSeed';
+import { ALBUM_FOLDERS_MANIFEST } from '@/data/albumFolders.generated';
 import { formatDisplayName } from '@/lib/displayName';
 import { applyMemberImageFallbacks, resolveMemberImageUrl } from '@/lib/memberImageFallbacks';
-import { Bell, GitBranch, MapPinned, Search, UserRound, Users } from 'lucide-react';
+import { ArrowRight, Bell, Folder, GitBranch, House, Images, MapPinned, MessageCircle, Phone, Search, UserRound, Users } from 'lucide-react';
 
 const LOCAL_MEMBERS_STORAGE_KEY = 'codeTAL2_local_members_v2';
 const LOCAL_MEMBERS_SOURCE_VERSION = 'xlsx_2026_05_17_r2';
 const MOBILE_BREAKPOINT_PX = 960;
+
+const ALBUM_IMAGE_MODULES = {
+  ...import.meta.glob('../albums/**/*.{png,jpg,jpeg,webp,gif,avif,svg}', { eager: true, import: 'default' }),
+  ...import.meta.glob('../album/**/*.{png,jpg,jpeg,webp,gif,avif,svg}', { eager: true, import: 'default' }),
+};
+
+function getAlbumFolderNameFromPath(assetPath) {
+  const normalizedPath = String(assetPath || '').replace(/\\/g, '/');
+  const parts = normalizedPath.split('/').filter(Boolean);
+  const rootIndex = parts.findIndex((part) => part === 'album' || part === 'albums');
+  if (rootIndex === -1) return '';
+  return String(parts[rootIndex + 1] || '').trim();
+}
+
+function buildStaticAlbumFolders() {
+  const byFolder = new Map();
+
+  ALBUM_FOLDERS_MANIFEST.forEach((entry) => {
+    const folderName = String(entry?.name || '').trim();
+    if (!folderName) return;
+
+    const count = Number.isFinite(Number(entry?.count)) ? Number(entry.count) : 0;
+    byFolder.set(folderName, {
+      id: normalizeName(folderName).replace(/\s+/g, '-').toLowerCase(),
+      name: folderName,
+      count,
+      coverUrl: '',
+      images: [],
+    });
+  });
+
+  Object.entries(ALBUM_IMAGE_MODULES).forEach(([assetPath, assetUrl]) => {
+    const folderName = getAlbumFolderNameFromPath(assetPath);
+    if (!folderName) return;
+
+    const existing = byFolder.get(folderName) || {
+      id: normalizeName(folderName).replace(/\s+/g, '-').toLowerCase(),
+      name: folderName,
+      count: 0,
+      coverUrl: '',
+      images: [],
+    };
+
+    const url = String(assetUrl || '').trim();
+    if (!url) return;
+
+    existing.images.push(url);
+    if (!existing.coverUrl) existing.coverUrl = url;
+
+    const hasManifestEntry = ALBUM_FOLDERS_MANIFEST.some(
+      (entry) => String(entry?.name || '').trim() === folderName
+    );
+    if (!hasManifestEntry) existing.count += 1;
+
+    byFolder.set(folderName, existing);
+  });
+
+  return Array.from(byFolder.values())
+    .map((folder) => ({
+      ...folder,
+      images: folder.images.sort((a, b) => a.localeCompare(b, 'he')),
+      coverUrl: folder.coverUrl || folder.images[0] || '',
+      count: Number.isFinite(Number(folder.count)) ? Number(folder.count) : folder.images.length,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'he'));
+}
+
+const STATIC_ALBUM_FOLDERS = buildStaticAlbumFolders();
 
 function getEffectiveViewportWidth() {
   if (typeof window === 'undefined') return Number.POSITIVE_INFINITY;
@@ -191,13 +260,50 @@ function initials(name) {
   return words.slice(0, 2).map((part) => part[0]).join('');
 }
 
+function normalizePhoneForContact(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const cleaned = raw.replace(/[^\d+]/g, '');
+  if (!cleaned) return '';
+
+  if (cleaned.startsWith('+')) {
+    return '+' + cleaned.slice(1).replace(/\+/g, '');
+  }
+  return cleaned.replace(/\+/g, '');
+}
+
+function toInternationalWhatsAppPhone(phoneValue) {
+  const normalized = normalizePhoneForContact(phoneValue);
+  if (!normalized) return '';
+
+  const digitsOnly = normalized.replace(/^\+/, '');
+  if (!digitsOnly) return '';
+  if (digitsOnly.startsWith('972')) return digitsOnly;
+  if (digitsOnly.startsWith('0')) return '972' + digitsOnly.slice(1);
+
+  return digitsOnly;
+}
+
+function buildMemberContactLinks(phoneValue) {
+  const telNumber = normalizePhoneForContact(phoneValue);
+  const whatsappNumber = toInternationalWhatsAppPhone(phoneValue);
+
+  return {
+    hasPhone: Boolean(telNumber),
+    telHref: telNumber ? 'tel:' + telNumber : '',
+    whatsappHref: whatsappNumber ? 'https://wa.me/' + whatsappNumber : '',
+  };
+}
+
 export default function AppTestDesktop() {
   const [members, setMembers] = useState([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
+  const [selectedAlbumFolderId, setSelectedAlbumFolderId] = useState('');
+  const [mobileMemberDrawerOpen, setMobileMemberDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeMenuTab, setActiveMenuTab] = useState(() => (detectMobileViewport() ? 'people' : 'map'));
+  const [activeMenuTab, setActiveMenuTab] = useState(() => (detectMobileViewport() ? 'home' : 'map'));
   const [isMobileViewport, setIsMobileViewport] = useState(() => detectMobileViewport());
-  const [mobileTreeDiagramMode, setMobileTreeDiagramMode] = useState('classic');
 
   useEffect(() => {
     const storedPayload = parseStoredMembers(window.localStorage.getItem(LOCAL_MEMBERS_STORAGE_KEY));
@@ -230,9 +336,24 @@ export default function AppTestDesktop() {
 
   useEffect(() => {
     if (!isMobileViewport) return;
-    if (activeMenuTab === 'tree' || activeMenuTab === 'people' || activeMenuTab === 'map' || activeMenuTab === 'updates') return;
-    setActiveMenuTab('people');
+    if (activeMenuTab === 'home' || activeMenuTab === 'people' || activeMenuTab === 'updates' || activeMenuTab === 'album') return;
+    setActiveMenuTab('home');
   }, [activeMenuTab, isMobileViewport]);
+
+  useEffect(() => {
+    if (activeMenuTab !== 'album') {
+      setSelectedAlbumFolderId('');
+    }
+    if (activeMenuTab !== 'people') {
+      setMobileMemberDrawerOpen(false);
+    }
+  }, [activeMenuTab]);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setMobileMemberDrawerOpen(false);
+    }
+  }, [isMobileViewport]);
 
   const treeMembers = useMemo(() => {
     return members
@@ -283,6 +404,17 @@ export default function AppTestDesktop() {
     return treeMembers.find((member) => member.id === selectedMemberId) || null;
   }, [treeMembers, selectedMemberId]);
   const selectedMemberImageUrl = resolveMemberImageUrl(selectedMember?.image_url);
+  const selectedMemberSpouseName = useMemo(() => {
+    if (!selectedMember) return '-';
+    if (selectedMember.spouse_id) {
+      return formatDisplayName(membersById[selectedMember.spouse_id]?.name || selectedMember.spouse_name) || '-';
+    }
+    return formatDisplayName(selectedMember.spouse_name) || '-';
+  }, [membersById, selectedMember]);
+  const selectedMemberContact = useMemo(
+    () => buildMemberContactLinks(selectedMember?.phone_number),
+    [selectedMember?.phone_number]
+  );
 
   const selectedChildren = useMemo(() => {
     if (!selectedMember) return [];
@@ -306,6 +438,15 @@ export default function AppTestDesktop() {
     () => upcomingEvents.filter((eventItem) => eventItem.type === 'anniversary'),
     [upcomingEvents]
   );
+  const homeEvents = useMemo(() => upcomingEvents.slice(0, 6), [upcomingEvents]);
+  const albumFolders = STATIC_ALBUM_FOLDERS;
+  const selectedAlbumFolder = useMemo(() => {
+    if (!selectedAlbumFolderId) return null;
+    return (
+      albumFolders.find((folder) => folder.id === selectedAlbumFolderId || folder.name === selectedAlbumFolderId) ||
+      null
+    );
+  }, [albumFolders, selectedAlbumFolderId]);
   const showingMap = activeMenuTab === 'map';
   const menuItems = [
     { id: 'tree', label: 'עץ משפחה', icon: GitBranch },
@@ -315,18 +456,17 @@ export default function AppTestDesktop() {
     { id: 'settings', label: 'הגדרות', icon: UserRound },
   ];
   const mobileMenuItems = [
-    { id: 'tree', label: 'עץ', icon: GitBranch, enabled: true },
-    { id: 'people', label: 'אנשים', icon: Users, enabled: true },
-    { id: 'updates', label: 'עדכונים', icon: Bell, enabled: true },
-    { id: 'map', label: 'מפה', icon: MapPinned, enabled: true },
-    { id: 'settings', label: 'הגדרות', icon: UserRound, enabled: false },
+    { id: 'home', label: 'בית', icon: House },
+    { id: 'updates', label: 'עדכונים', icon: Bell },
+    { id: 'people', label: 'חברי המשפחה', icon: Users },
+    { id: 'album', label: 'אלבום תמונות', icon: Images },
   ];
 
   const mobileHeaderTitle = useMemo(() => {
-    if (activeMenuTab === 'tree') return 'מרשם קיים';
-    if (activeMenuTab === 'people') return 'אנשים';
+    if (activeMenuTab === 'home') return 'בית';
+    if (activeMenuTab === 'people') return 'חברי המשפחה';
     if (activeMenuTab === 'updates') return 'עדכונים';
-    if (activeMenuTab === 'map') return 'מפה';
+    if (activeMenuTab === 'album') return 'אלבום תמונות';
     return 'משפחת כהן';
   }, [activeMenuTab]);
 
@@ -346,58 +486,101 @@ export default function AppTestDesktop() {
   };
 
   if (isMobileViewport) {
-    const showTreeScreen = activeMenuTab === 'tree';
+    const showHomeScreen = activeMenuTab === 'home';
     const showPeopleScreen = activeMenuTab === 'people';
-    const showMapScreen = activeMenuTab === 'map';
     const showUpdatesScreen = activeMenuTab === 'updates';
+    const showAlbumScreen = activeMenuTab === 'album';
 
     return (
       <div className="test-page test-mobile-page" dir="rtl">
-        <header className={showTreeScreen ? 'test-mobile-header test-mobile-header-tree' : 'test-mobile-header'}>
-          {showTreeScreen ? (
-            <div className="test-mobile-header-switch schematic-view-switch" role="tablist" aria-label="מצב תצוגת מרשם">
-              <button
-                type="button"
-                className={mobileTreeDiagramMode === 'classic' ? 'schematic-view-btn active' : 'schematic-view-btn'}
-                onClick={() => setMobileTreeDiagramMode('classic')}
-              >
-                מרשם קיים
-              </button>
-              <button
-                type="button"
-                className={mobileTreeDiagramMode === 'canvasVertical' ? 'schematic-view-btn active' : 'schematic-view-btn'}
-                onClick={() => setMobileTreeDiagramMode('canvasVertical')}
-              >
-                מרשם גדול אנכי
-              </button>
+        <header className={showHomeScreen ? 'test-mobile-header test-mobile-header-home' : 'test-mobile-header'}>
+          {showHomeScreen ? (
+            <div className="test-mobile-home-brand">
+              <span className="test-mobile-home-logo" aria-hidden="true">
+                <GitBranch size={24} strokeWidth={2.2} />
+              </span>
+              <div className="test-mobile-home-brand-text">
+                <h1>משפחת כהן</h1>
+                <p>עץ המשפחה שלנו</p>
+              </div>
             </div>
           ) : (
             <>
               <h1>{mobileHeaderTitle}</h1>
-              <button
-                type="button"
-                className="test-mobile-header-icon"
-                aria-label="חיפוש"
-                onClick={() => setActiveMenuTab('people')}
-              >
-                <Search size={26} strokeWidth={2.1} />
-              </button>
+              {showPeopleScreen ? (
+                <button
+                  type="button"
+                  className="test-mobile-header-icon"
+                  aria-label="ניקוי חיפוש"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <Search size={26} strokeWidth={2.1} />
+                </button>
+              ) : null}
+              {showAlbumScreen && selectedAlbumFolder ? (
+                <button
+                  type="button"
+                  className="test-mobile-header-icon"
+                  aria-label="חזרה לתיקיות האלבום"
+                  onClick={() => setSelectedAlbumFolderId('')}
+                >
+                  <ArrowRight size={24} strokeWidth={2.1} />
+                </button>
+              ) : null}
             </>
           )}
         </header>
 
         <main className="test-mobile-main">
-          {showTreeScreen && (
-            <section className="test-mobile-screen test-mobile-tree-screen">
-              <FamilySchematicDiagram
-                members={treeMembers}
-                selectedMemberId={selectedMemberId}
-                onSelectMember={setSelectedMemberId}
-                mobileCompact
-                showViewSwitch={false}
-                diagramMode={mobileTreeDiagramMode}
-                onDiagramModeChange={setMobileTreeDiagramMode}
-              />
+          {showHomeScreen && (
+            <section className="test-mobile-screen test-mobile-home-screen">
+              <div className="test-mobile-search-wrap test-mobile-home-search">
+                <span className="test-mobile-search-icon">
+                  <Search size={21} strokeWidth={2} />
+                </span>
+                <input
+                  type="search"
+                  className="test-mobile-search-input"
+                  placeholder="חיפוש בן משפחה..."
+                  value={searchTerm}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setSearchTerm(nextValue);
+                    if (nextValue.trim()) setActiveMenuTab('people');
+                  }}
+                />
+              </div>
+
+              <article className="test-mobile-home-updates">
+                <div className="test-mobile-home-updates-head">
+                  <strong>עדכונים</strong>
+                  <button type="button" onClick={() => setActiveMenuTab('updates')}>
+                    לכל העדכונים
+                  </button>
+                </div>
+                {homeEvents.length === 0 ? (
+                  <p className="test-update-empty">אין עדכונים בחודש הנוכחי.</p>
+                ) : (
+                  <div className="test-mobile-home-updates-list">
+                    {homeEvents.map((eventItem) => (
+                      <button
+                        key={eventItem.id}
+                        type="button"
+                        className="test-mobile-home-update-row"
+                        onClick={() => setActiveMenuTab('updates')}
+                      >
+                        <span className="test-mobile-home-update-type">
+                          {eventItem.type === 'birthday' ? 'יום הולדת' : 'יום נישואין'}
+                        </span>
+                        <span className="test-mobile-home-update-name">{eventItem.name}</span>
+                        <small className="test-mobile-home-update-meta">
+                          {toShortDate(eventItem.date)} • {formatInDaysLabel(eventItem.inDays)}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </article>
             </section>
           )}
 
@@ -422,7 +605,10 @@ export default function AppTestDesktop() {
                     key={member.id}
                     type="button"
                     className={selectedMemberId === member.id ? 'test-mobile-member-row active' : 'test-mobile-member-row'}
-                    onClick={() => setSelectedMemberId(member.id)}
+                    onClick={() => {
+                      setSelectedMemberId(member.id);
+                      setMobileMemberDrawerOpen(true);
+                    }}
                   >
                     <span className="test-mobile-avatar">{renderListAvatar(member)}</span>
                     <span className="test-mobile-member-meta">
@@ -432,16 +618,111 @@ export default function AppTestDesktop() {
                   </button>
                 ))}
               </div>
-            </section>
-          )}
 
-          {showMapScreen && (
-            <section className="test-mobile-screen test-mobile-map-screen">
-              <FamilyWorldMap
-                members={treeMembers}
-                selectedMemberId={selectedMemberId}
-                onSelectMember={setSelectedMemberId}
-              />
+              {mobileMemberDrawerOpen && selectedMember ? (
+                <div
+                  className="test-mobile-member-overlay"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="סגירת כרטיס בן משפחה"
+                  onClick={() => setMobileMemberDrawerOpen(false)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setMobileMemberDrawerOpen(false);
+                    }
+                  }}
+                >
+                  <aside
+                    className="test-mobile-member-drawer"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="כרטיס בן משפחה"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="test-mobile-member-drawer-head">
+                      <strong>כרטיס בן משפחה</strong>
+                    </div>
+
+                    <div className="test-mobile-member-drawer-profile">
+                      <span className="test-mobile-member-drawer-avatar">
+                        {selectedMemberImageUrl ? (
+                          <img
+                            className="test-mobile-member-drawer-avatar-image"
+                            src={selectedMemberImageUrl}
+                            alt={formatDisplayName(selectedMember.name)}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="test-mobile-member-drawer-avatar-fallback">{initials(selectedMember.name)}</span>
+                        )}
+                      </span>
+
+                      <div className="test-mobile-member-drawer-title">
+                        <h2>{formatDisplayName(selectedMember.name)}</h2>
+                        <p>{selectedMember.gender || 'ללא מין'} • דור {selectedMember.generation ?? '-'}</p>
+                      </div>
+                    </div>
+
+                    <div className="test-mobile-member-drawer-details">
+                      <div className="test-mobile-member-drawer-row">
+                        <span>גיל:</span>
+                        <strong>{getAge(selectedMember.birth_date) ?? '-'}</strong>
+                      </div>
+                      <div className="test-mobile-member-drawer-row">
+                        <span>תאריך לידה:</span>
+                        <strong>{toShortDate(selectedMember.birth_date)}</strong>
+                      </div>
+                      <div className="test-mobile-member-drawer-row">
+                        <span>טלפון:</span>
+                        <strong>{selectedMember.phone_number || '-'}</strong>
+                      </div>
+                      <div className="test-mobile-member-contact-actions" aria-label="יצירת קשר מהירה">
+                        <a
+                          href={selectedMemberContact.telHref || '#'}
+                          className={selectedMemberContact.telHref ? 'test-mobile-member-contact-btn' : 'test-mobile-member-contact-btn disabled'}
+                          aria-label="התקשרות טלפונית"
+                          onClick={(event) => {
+                            if (!selectedMemberContact.telHref) event.preventDefault();
+                          }}
+                        >
+                          <Phone size={18} strokeWidth={2.2} />
+                          <span>טלפון</span>
+                        </a>
+                        <a
+                          href={selectedMemberContact.whatsappHref || '#'}
+                          className={selectedMemberContact.whatsappHref ? 'test-mobile-member-contact-btn whatsapp' : 'test-mobile-member-contact-btn whatsapp disabled'}
+                          aria-label="פתיחה ב-WhatsApp"
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => {
+                            if (!selectedMemberContact.whatsappHref) event.preventDefault();
+                          }}
+                        >
+                          <MessageCircle size={18} strokeWidth={2.2} />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                      <div className="test-mobile-member-drawer-row">
+                        <span>אימייל:</span>
+                        <strong>{selectedMember.email || '-'}</strong>
+                      </div>
+                      <div className="test-mobile-member-drawer-row">
+                        <span>עיר:</span>
+                        <strong>{selectedMember.city || '-'}</strong>
+                      </div>
+                      <div className="test-mobile-member-drawer-row">
+                        <span>בן/בת זוג:</span>
+                        <strong>{selectedMemberSpouseName}</strong>
+                      </div>
+                      <div className="test-mobile-member-drawer-row">
+                        <span>ילדים:</span>
+                        <strong>{selectedChildren.map((child) => formatDisplayName(child.name)).join(', ') || '-'}</strong>
+                      </div>
+                    </div>
+                  </aside>
+                </div>
+              ) : null}
             </section>
           )}
 
@@ -484,6 +765,71 @@ export default function AppTestDesktop() {
               </div>
             </section>
           )}
+
+          {showAlbumScreen && (
+            <section className="test-mobile-screen test-mobile-album-screen">
+              {albumFolders.length === 0 ? (
+                <p className="test-empty">לא נמצאו תיקיות אלבום עם תמונות.</p>
+              ) : selectedAlbumFolder ? (
+                <div className="test-mobile-album-detail">
+                  <div className="test-mobile-album-detail-head">
+                    <strong className="test-mobile-album-detail-title">{selectedAlbumFolder.name}</strong>
+                    <small className="test-mobile-album-detail-count">
+                      {selectedAlbumFolder.images.length || selectedAlbumFolder.count} תמונות
+                    </small>
+                  </div>
+
+                  {selectedAlbumFolder.images.length === 0 ? (
+                    <p className="test-empty">אין תמונות בתיקייה זו.</p>
+                  ) : (
+                    <div className="test-mobile-album-gallery">
+                      {selectedAlbumFolder.images.map((imageUrl, imageIndex) => (
+                        <figure
+                          key={`${selectedAlbumFolder.id || selectedAlbumFolder.name}-${imageIndex + 1}`}
+                          className="test-mobile-album-gallery-item"
+                        >
+                          <img
+                            className="test-mobile-album-gallery-photo"
+                            src={imageUrl}
+                            alt={`${selectedAlbumFolder.name} ${imageIndex + 1}`}
+                            loading="lazy"
+                          />
+                        </figure>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="test-mobile-album-grid">
+                  {albumFolders.map((folder) => (
+                    <button
+                      key={folder.id || folder.name}
+                      type="button"
+                      className="test-mobile-album-item"
+                      onClick={() => setSelectedAlbumFolderId(folder.id || folder.name)}
+                    >
+                      <span className="test-mobile-album-photo-frame">
+                        {folder.coverUrl ? (
+                          <img
+                            className="test-mobile-album-photo"
+                            src={folder.coverUrl}
+                            alt={folder.name}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="test-mobile-album-fallback test-mobile-album-folder-icon">
+                            <Folder size={24} strokeWidth={2.1} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="test-mobile-album-name">{folder.name}</span>
+                      <small className="test-mobile-album-count">{folder.count} תמונות</small>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </main>
 
         <nav className="test-mobile-bottom-nav" aria-label="תפריט מובייל">
@@ -495,8 +841,7 @@ export default function AppTestDesktop() {
                 key={item.id}
                 type="button"
                 className={isActive ? 'test-mobile-nav-btn active' : 'test-mobile-nav-btn'}
-                onClick={() => item.enabled && setActiveMenuTab(item.id)}
-                disabled={!item.enabled}
+                onClick={() => setActiveMenuTab(item.id)}
               >
                 <Icon size={20} strokeWidth={2.1} />
                 <span>{item.label}</span>
@@ -599,6 +944,33 @@ export default function AppTestDesktop() {
                     <li>גיל: {getAge(selectedMember.birth_date) ?? '-'}</li>
                     <li>תאריך לידה: {toShortDate(selectedMember.birth_date)}</li>
                     <li>טלפון: {selectedMember.phone_number || '-'}</li>
+                    <li className="test-member-card-contact-line">
+                      <span>יצירת קשר:</span>
+                      <span className="test-member-card-contact-actions">
+                        <a
+                          href={selectedMemberContact.telHref || '#'}
+                          className={selectedMemberContact.telHref ? 'test-member-card-contact-btn' : 'test-member-card-contact-btn disabled'}
+                          aria-label="התקשרות טלפונית"
+                          onClick={(event) => {
+                            if (!selectedMemberContact.telHref) event.preventDefault();
+                          }}
+                        >
+                          <Phone size={14} strokeWidth={2.2} />
+                        </a>
+                        <a
+                          href={selectedMemberContact.whatsappHref || '#'}
+                          className={selectedMemberContact.whatsappHref ? 'test-member-card-contact-btn whatsapp' : 'test-member-card-contact-btn whatsapp disabled'}
+                          aria-label="פתיחה ב-WhatsApp"
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => {
+                            if (!selectedMemberContact.whatsappHref) event.preventDefault();
+                          }}
+                        >
+                          <MessageCircle size={14} strokeWidth={2.2} />
+                        </a>
+                      </span>
+                    </li>
                     <li>אימייל: {selectedMember.email || '-'}</li>
                     <li>עיר: {selectedMember.city || '-'}</li>
                     <li>
