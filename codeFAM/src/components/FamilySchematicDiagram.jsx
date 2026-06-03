@@ -89,6 +89,14 @@ function pickPrimaryFromGroup(group) {
   })[0];
 }
 
+function pickMergedImageUrl(group, selectedPrimary) {
+  const primaryImageUrl = String(selectedPrimary?.image_url || '').trim();
+  if (primaryImageUrl) return primaryImageUrl;
+
+  const fallbackMember = group.find((member) => String(member?.image_url || '').trim());
+  return fallbackMember ? String(fallbackMember.image_url || '').trim() : '';
+}
+
 function getSecondarySpousesForLead(pair, membersById) {
   if (!Array.isArray(pair) || pair.length === 0) return [];
   const lead = pair[0];
@@ -167,6 +175,7 @@ function mergeEquivalentMembers(members) {
 
     mergedMembers.push({
       ...selectedPrimary,
+      image_url: pickMergedImageUrl(group, selectedPrimary),
       father_id: selectedPrimary.father_id ? aliasToPrimary[selectedPrimary.father_id] || selectedPrimary.father_id : null,
       mother_id: selectedPrimary.mother_id ? aliasToPrimary[selectedPrimary.mother_id] || selectedPrimary.mother_id : null,
       spouse_id: primarySpouseId,
@@ -552,6 +561,8 @@ export default function FamilySchematicDiagram({
     [isControlledDiagramMode, onDiagramModeChange]
   );
   const treeContainerRef = useRef(null);
+  const classicViewLabel = mobileCompact ? 'אנכי' : 'מרשם קיים';
+  const verticalViewLabel = mobileCompact ? 'אופקי' : 'מרשם גדול אנכי';
 
   const sourceMembers = useMemo(() => {
     return members && members.length > 0 ? members : RESOLVED_FAMILY_MEMBERS_SEED;
@@ -777,6 +788,9 @@ export default function FamilySchematicDiagram({
       const activeCard = container.querySelector('.schematic-person-card.active, .schematic-child-card.active');
       if (!activeCard) return;
 
+      const focusTarget = activeCard.querySelector('.schematic-photo-frame') || activeCard;
+      focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+
       const containerRect = container.getBoundingClientRect();
       const cardRect = activeCard.getBoundingClientRect();
       const deltaX = cardRect.left + cardRect.width / 2 - (containerRect.left + containerRect.width / 2);
@@ -856,14 +870,14 @@ export default function FamilySchematicDiagram({
             className={diagramMode === 'classic' ? 'schematic-view-btn active' : 'schematic-view-btn'}
             onClick={() => setDiagramMode('classic')}
           >
-            מרשם קיים
+            {classicViewLabel}
           </button>
           <button
             type="button"
             className={diagramMode === 'canvasVertical' ? 'schematic-view-btn active' : 'schematic-view-btn'}
             onClick={() => setDiagramMode('canvasVertical')}
           >
-            מרשם גדול אנכי
+            {verticalViewLabel}
           </button>
         </div>
       )}
@@ -873,6 +887,7 @@ export default function FamilySchematicDiagram({
           members={diagramMembers}
           selectedMemberId={diagramSelectedMemberId}
           onSelectMember={onSelectMember}
+          mobileCompact={mobileCompact}
         />
       ) : (
         families.map((family) => (

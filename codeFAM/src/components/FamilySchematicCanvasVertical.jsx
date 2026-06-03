@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { resolveMemberImageUrl } from '@/lib/memberImageFallbacks';
 
 function normalizeGeneration(generation) {
@@ -135,6 +135,21 @@ function getSecondarySpousesForLead(pair, membersById) {
   return lead.secondary_spouse_ids
     .map((id) => membersById[id])
     .filter((member) => member && !pairIds.has(member.id));
+}
+
+function clampZoom(value) {
+  return Math.min(2.2, Math.max(0.2, value));
+}
+
+function touchDistance(touchA, touchB) {
+  return Math.hypot(touchA.clientX - touchB.clientX, touchA.clientY - touchB.clientY);
+}
+
+function touchCenter(touchA, touchB) {
+  return {
+    x: (touchA.clientX + touchB.clientX) / 2,
+    y: (touchA.clientY + touchB.clientY) / 2,
+  };
 }
 
 function PairRow({ pair, selectedMemberId, membersById, onSelectMember, cardClassName, cardSizeClassName = '', rowRef }) {
@@ -327,7 +342,7 @@ function CoupleTreeNode({ node, depth, selectedMemberId, membersById, onSelectMe
   );
 }
 
-export default function FamilySchematicCanvasVertical({ members, selectedMemberId, onSelectMember }) {
+export default function FamilySchematicCanvasVertical({ members, selectedMemberId, onSelectMember, mobileCompact = false }) {
   const [zoom, setZoom] = useState(1);
   const viewportRef = useRef(null);
   const previousZoomRef = useRef(1);
@@ -336,6 +351,9 @@ export default function FamilySchematicCanvasVertical({ members, selectedMemberI
   const timeoutCenterRef = useRef(0);
   const selectedRafRef = useRef(0);
   const selectedTimeoutRef = useRef(0);
+  const pinchStateRef = useRef(null);
+  const dragStateRef = useRef(null);
+  const zoomRef = useRef(1);
 
   const membersById = useMemo(() => {
     return Object.fromEntries(members.map((member) => [member.id, member]));
@@ -597,6 +615,112 @@ export default function FamilySchematicCanvasVertical({ members, selectedMemberI
     }, 90);
   }, [centerSelectedOnNextFrame]);
 
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  useEffect(() => {
+    if (!mobileCompact) return undefined;
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+
+    const stopBrowserZoom = (event) => {
+      event.preventDefault();
+    };
+
+    const onTouchStart = (event) => {
+      if (event.touches.length === 2) {
+        event.preventDefault();
+        const [firstTouch, secondTouch] = event.touches;
+        const center = touchCenter(firstTouch, secondTouch);
+        const viewportRect = viewport.getBoundingClientRect();
+        pinchStateRef.current = {
+          distance: touchDistance(firstTouch, secondTouch),
+          zoom: zoomRef.current,
+          centerX: center.x - viewportRect.left,
+          centerY: center.y - viewportRect.top,
+          scrollLeft: viewport.scrollLeft,
+          scrollTop: viewport.scrollTop,
+        };
+        dragStateRef.current = null;
+        return;
+      }
+
+      if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        dragStateRef.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          scrollLeft: viewport.scrollLeft,
+          scrollTop: viewport.scrollTop,
+        };
+      }
+    };
+
+    const onTouchMove = (event) => {
+      if (event.touches.length === 2 && pinchStateRef.current) {
+        event.preventDefault();
+        const [firstTouch, secondTouch] = event.touches;
+        const pinchState = pinchStateRef.current;
+        const nextDistance = touchDistance(firstTouch, secondTouch);
+        if (pinchState.distance <= 0 || nextDistance <= 0) return;
+
+        const nextZoom = clampZoom(pinchState.zoom * (nextDistance / pinchState.distance));
+        const zoomRatio = nextZoom / pinchState.zoom;
+        zoomRef.current = nextZoom;
+        setZoom(nextZoom);
+        viewport.scrollLeft = Math.max(0, (pinchState.scrollLeft + pinchState.centerX) * zoomRatio - pinchState.centerX);
+        viewport.scrollTop = Math.max(0, (pinchState.scrollTop + pinchState.centerY) * zoomRatio - pinchState.centerY);
+        return;
+      }
+
+      if (event.touches.length === 1 && dragStateRef.current) {
+        event.preventDefault();
+        const touch = event.touches[0];
+        viewport.scrollLeft = dragStateRef.current.scrollLeft + (dragStateRef.current.x - touch.clientX);
+        viewport.scrollTop = dragStateRef.current.scrollTop + (dragStateRef.current.y - touch.clientY);
+      }
+    };
+
+    const onTouchEnd = (event) => {
+      if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        dragStateRef.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          scrollLeft: viewport.scrollLeft,
+          scrollTop: viewport.scrollTop,
+        };
+        pinchStateRef.current = null;
+        return;
+      }
+
+      if (event.touches.length === 0) {
+        pinchStateRef.current = null;
+        dragStateRef.current = null;
+      }
+    };
+
+    const listenerOptions = { passive: false };
+    viewport.addEventListener('touchstart', onTouchStart, listenerOptions);
+    viewport.addEventListener('touchmove', onTouchMove, listenerOptions);
+    viewport.addEventListener('touchend', onTouchEnd, listenerOptions);
+    viewport.addEventListener('touchcancel', onTouchEnd, listenerOptions);
+    viewport.addEventListener('gesturestart', stopBrowserZoom, listenerOptions);
+    viewport.addEventListener('gesturechange', stopBrowserZoom, listenerOptions);
+    viewport.addEventListener('gestureend', stopBrowserZoom, listenerOptions);
+
+    return () => {
+      viewport.removeEventListener('touchstart', onTouchStart, listenerOptions);
+      viewport.removeEventListener('touchmove', onTouchMove, listenerOptions);
+      viewport.removeEventListener('touchend', onTouchEnd, listenerOptions);
+      viewport.removeEventListener('touchcancel', onTouchEnd, listenerOptions);
+      viewport.removeEventListener('gesturestart', stopBrowserZoom, listenerOptions);
+      viewport.removeEventListener('gesturechange', stopBrowserZoom, listenerOptions);
+      viewport.removeEventListener('gestureend', stopBrowserZoom, listenerOptions);
+    };
+  }, [mobileCompact]);
+
   useLayoutEffect(() => {
     const previousZoom = previousZoomRef.current;
     if (!didInitialCenterRef.current) {
@@ -642,18 +766,23 @@ export default function FamilySchematicCanvasVertical({ members, selectedMemberI
   const zoomPercent = Math.round(zoom * 100);
 
   return (
-    <section className="schematic-canvas-root schematic-canvas-vertical-root">
+    <section className={mobileCompact ? 'schematic-canvas-root schematic-canvas-vertical-root schematic-canvas-mobile-pinch' : 'schematic-canvas-root schematic-canvas-vertical-root'}>
       <div className="schematic-canvas-toolbar">
         <strong>{familyTitle(rootNode.pair)}</strong>
-        <div className="schematic-canvas-zoom-controls">
-          <button type="button" onClick={() => setZoom((prev) => Math.min(2.2, prev + 0.1))}>+</button>
-          <button type="button" onClick={() => setZoom((prev) => Math.max(0.2, prev - 0.1))}>-</button>
-          <button type="button" onClick={() => setZoom(1)}>איפוס</button>
-          <span>{zoomPercent}%</span>
-        </div>
+        {!mobileCompact && (
+          <div className="schematic-canvas-zoom-controls">
+            <button type="button" onClick={() => setZoom((prev) => Math.min(2.2, prev + 0.1))}>+</button>
+            <button type="button" onClick={() => setZoom((prev) => Math.max(0.2, prev - 0.1))}>-</button>
+            <button type="button" onClick={() => setZoom(1)}>איפוס</button>
+            <span>{zoomPercent}%</span>
+          </div>
+        )}
       </div>
 
-      <div className="schematic-canvas-viewport" ref={viewportRef}>
+      <div
+        className="schematic-canvas-viewport"
+        ref={viewportRef}
+      >
         <div className="schematic-canvas-stage" style={{ transform: `scale(${zoom})` }}>
           <CoupleTreeNode
             node={rootNode}
