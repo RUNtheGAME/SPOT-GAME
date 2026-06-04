@@ -5,7 +5,9 @@ import { RESOLVED_FAMILY_MEMBERS_SEED } from '@/data/familyMembersResolvedSeed';
 import { ALBUM_FOLDERS_MANIFEST } from '@/data/albumFolders.generated';
 import { formatDisplayName } from '@/lib/displayName';
 import { applyMemberImageFallbacks, resolveMemberImageUrl } from '@/lib/memberImageFallbacks';
-import { ArrowRight, Bell, Folder, GitBranch, House, Images, MapPinned, MessageCircle, Phone, Search, UserRound, Users } from 'lucide-react';
+import { ArrowRight, Bell, Folder, GitBranch, House, Images, MapPinned, MessageCircle, Phone, Search, UserRound, Users, X } from 'lucide-react';
+import treeIconUrl from './assets/tree.svg';
+import listIconUrl from './assets/reshima.svg';
 
 const LOCAL_MEMBERS_STORAGE_KEY = 'codeTAL2_local_members_v2';
 const LOCAL_MEMBERS_SOURCE_VERSION = 'xlsx_2026_05_17_r2';
@@ -148,6 +150,20 @@ function getAge(birthDate) {
   return years >= 0 ? years : null;
 }
 
+function birthOrderValue(member) {
+  if (!member) return Number.POSITIVE_INFINITY;
+
+  if (member.birth_date) {
+    const parsed = new Date(member.birth_date).getTime();
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  const birthYear = Number(member.birth_year);
+  if (Number.isFinite(birthYear)) return birthYear * 10000;
+
+  return Number.POSITIVE_INFINITY;
+}
+
 function getNextAnnualDate(dateString) {
   if (!dateString) return null;
   const original = new Date(dateString);
@@ -184,6 +200,25 @@ function diffDays(date) {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function getBirthdayAge(member, eventDate) {
+  if (!member || !eventDate) return null;
+
+  const birthYear = Number(member.birth_year);
+  if (Number.isFinite(birthYear)) {
+    return eventDate.getFullYear() - birthYear;
+  }
+
+  if (!member.birth_date) return null;
+  const birth = new Date(member.birth_date);
+  if (Number.isNaN(birth.getTime())) return null;
+
+  let years = eventDate.getFullYear() - birth.getFullYear();
+  const monthDiff = eventDate.getMonth() - birth.getMonth();
+  const dayDiff = eventDate.getDate() - birth.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) years -= 1;
+  return years >= 0 ? years : null;
+}
+
 function getUpcomingEvents(members) {
   const events = [];
   const anniversaryKeys = new Set();
@@ -200,6 +235,7 @@ function getUpcomingEvents(members) {
           name: formatDisplayName(member.name),
           date: birthEventDate,
           inDays: birthInDays,
+          age: getBirthdayAge(member, birthEventDate),
         });
       }
 
@@ -224,6 +260,14 @@ function getUpcomingEvents(members) {
     });
 
   return events.sort((a, b) => a.date - b.date);
+}
+
+function formatMobileUpdateName(eventItem) {
+  if (!eventItem) return '';
+  if (eventItem.type === 'birthday' && Number.isFinite(Number(eventItem.age))) {
+    return `${eventItem.name} (${Number(eventItem.age)})`;
+  }
+  return eventItem.name;
 }
 
 function rowSubtitle(member) {
@@ -296,12 +340,30 @@ function buildMemberContactLinks(phoneValue) {
   };
 }
 
+function memberMatchesSearch(member, query) {
+  const needle = normalizeName(query).toLowerCase();
+  if (!needle) return false;
+
+  return [
+    member?.name,
+    formatDisplayName(member?.name),
+    member?.city,
+    member?.spouse_name,
+    member?.father_name,
+    member?.mother_name,
+  ]
+    .filter(Boolean)
+    .some((value) => normalizeName(value).toLowerCase().includes(needle));
+}
+
 export default function AppTestDesktop() {
   const [members, setMembers] = useState([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [selectedAlbumFolderId, setSelectedAlbumFolderId] = useState('');
   const [mobileMemberDrawerOpen, setMobileMemberDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [mobileGenerationFilter, setMobileGenerationFilter] = useState('all');
+  const [mobileTreeDiagramMode, setMobileTreeDiagramMode] = useState('classic');
   const [activeMenuTab, setActiveMenuTab] = useState(() => (detectMobileViewport() ? 'home' : 'map'));
   const [isMobileViewport, setIsMobileViewport] = useState(() => detectMobileViewport());
 
@@ -336,7 +398,7 @@ export default function AppTestDesktop() {
 
   useEffect(() => {
     if (!isMobileViewport) return;
-    if (activeMenuTab === 'home' || activeMenuTab === 'people' || activeMenuTab === 'updates' || activeMenuTab === 'album') return;
+    if (activeMenuTab === 'home' || activeMenuTab === 'people' || activeMenuTab === 'updates' || activeMenuTab === 'album' || activeMenuTab === 'tree') return;
     setActiveMenuTab('home');
   }, [activeMenuTab, isMobileViewport]);
 
@@ -370,6 +432,17 @@ export default function AppTestDesktop() {
     return Object.fromEntries(treeMembers.map((member) => [member.id, member]));
   }, [treeMembers]);
 
+  useEffect(() => {
+    if (!isMobileViewport || activeMenuTab !== 'tree') return;
+    const query = searchTerm.trim();
+    if (!query) return;
+
+    const matchedMember = treeMembers.find((member) => memberMatchesSearch(member, query));
+    if (matchedMember && matchedMember.id !== selectedMemberId) {
+      setSelectedMemberId(matchedMember.id);
+    }
+  }, [activeMenuTab, isMobileViewport, searchTerm, selectedMemberId, treeMembers]);
+
   const filteredMembers = useMemo(() => {
     const uniqueMembers = [];
     const seenNames = new Set();
@@ -381,14 +454,22 @@ export default function AppTestDesktop() {
       uniqueMembers.push(member);
     });
 
+    const generationFilteredMembers = isMobileViewport
+      ? uniqueMembers.filter((member) => {
+          if (mobileGenerationFilter === 'all') return true;
+          const generation = Number(member.generation);
+          return generation === Number(mobileGenerationFilter);
+        })
+      : uniqueMembers;
+
     const needle = searchTerm.trim().toLowerCase();
-    if (!needle) return uniqueMembers;
-    return uniqueMembers.filter((member) => {
+    if (!needle) return generationFilteredMembers;
+    return generationFilteredMembers.filter((member) => {
       return [member.name, member.city, member.spouse_name, member.father_name, member.mother_name]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
     });
-  }, [searchTerm, treeMembers]);
+  }, [isMobileViewport, mobileGenerationFilter, searchTerm, treeMembers]);
 
   useEffect(() => {
     if (!selectedMemberId && treeMembers.length > 0) {
@@ -418,14 +499,49 @@ export default function AppTestDesktop() {
 
   const selectedChildren = useMemo(() => {
     if (!selectedMember) return [];
-    const selectedName = normalizeName(selectedMember.name);
-    return treeMembers.filter((member) => {
-      if (member.id === selectedMember.id) return false;
-      if (member.father_id === selectedMember.id || member.mother_id === selectedMember.id) return true;
-      return (
-        normalizeName(member.father_name) === selectedName ||
-        normalizeName(member.mother_name) === selectedName
-      );
+
+    const selectedDisplayName = normalizeName(formatDisplayName(selectedMember.name)).toLowerCase();
+    const selectedAliases = treeMembers.filter(
+      (member) => normalizeName(formatDisplayName(member.name)).toLowerCase() === selectedDisplayName
+    );
+
+    const selectedAliasIds = new Set(selectedAliases.map((member) => member.id));
+    const selectedAliasRawNames = new Set(selectedAliases.map((member) => normalizeName(member.name)));
+    const selectedAliasDisplayNames = new Set(
+      selectedAliases.map((member) => normalizeName(formatDisplayName(member.name)).toLowerCase())
+    );
+
+    const relatedChildren = treeMembers
+      .filter((member) => {
+        if (selectedAliasIds.has(member.id)) return false;
+
+        if (selectedAliasIds.has(member.father_id) || selectedAliasIds.has(member.mother_id)) return true;
+
+        const fatherRaw = normalizeName(member.father_name);
+        const motherRaw = normalizeName(member.mother_name);
+        const fatherDisplay = normalizeName(formatDisplayName(member.father_name)).toLowerCase();
+        const motherDisplay = normalizeName(formatDisplayName(member.mother_name)).toLowerCase();
+
+        return (
+          selectedAliasRawNames.has(fatherRaw) ||
+          selectedAliasRawNames.has(motherRaw) ||
+          selectedAliasDisplayNames.has(fatherDisplay) ||
+          selectedAliasDisplayNames.has(motherDisplay)
+        );
+      })
+      .sort((a, b) => {
+        const birthDiff = birthOrderValue(a) - birthOrderValue(b);
+        if (Number.isFinite(birthDiff) && birthDiff !== 0) return birthDiff;
+        return String(formatDisplayName(a.name) || '').localeCompare(String(formatDisplayName(b.name) || ''), 'he');
+      });
+
+    const seenChildNames = new Set();
+    return relatedChildren.filter((child) => {
+      const normalizedChildName = normalizeName(formatDisplayName(child.name)).toLowerCase();
+      const key = normalizedChildName || `id:${child.id}`;
+      if (seenChildNames.has(key)) return false;
+      seenChildNames.add(key);
+      return true;
     });
   }, [selectedMember, treeMembers]);
 
@@ -461,12 +577,23 @@ export default function AppTestDesktop() {
     { id: 'people', label: 'חברי המשפחה', icon: Users },
     { id: 'album', label: 'אלבום תמונות', icon: Images },
   ];
+  const mobileGenerationFilters = [
+    { id: 'all', label: 'כולם' },
+    { id: '1', label: 'דור 1' },
+    { id: '2', label: 'דור 2' },
+    { id: '3', label: 'דור 3' },
+  ];
+  const mobileTreeViewFilters = [
+    { id: 'classic', label: 'אנכי' },
+    { id: 'canvasVertical', label: 'אופקי' },
+  ];
 
   const mobileHeaderTitle = useMemo(() => {
     if (activeMenuTab === 'home') return 'בית';
     if (activeMenuTab === 'people') return 'חברי המשפחה';
     if (activeMenuTab === 'updates') return 'עדכונים';
     if (activeMenuTab === 'album') return 'אלבום תמונות';
+    if (activeMenuTab === 'tree') return 'עץ משפחה';
     return 'משפחת כהן';
   }, [activeMenuTab]);
 
@@ -490,136 +617,17 @@ export default function AppTestDesktop() {
     const showPeopleScreen = activeMenuTab === 'people';
     const showUpdatesScreen = activeMenuTab === 'updates';
     const showAlbumScreen = activeMenuTab === 'album';
+    const showTreeScreen = activeMenuTab === 'tree';
 
-    return (
-      <div className="test-page test-mobile-page" dir="rtl">
-        <header className={showHomeScreen ? 'test-mobile-header test-mobile-header-home' : 'test-mobile-header'}>
-          {showHomeScreen ? (
-            <div className="test-mobile-home-brand">
-              <span className="test-mobile-home-logo" aria-hidden="true">
-                <GitBranch size={24} strokeWidth={2.2} />
-              </span>
-              <div className="test-mobile-home-brand-text">
-                <h1>משפחת כהן</h1>
-                <p>עץ המשפחה שלנו</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <h1>{mobileHeaderTitle}</h1>
-              {showPeopleScreen ? (
-                <button
-                  type="button"
-                  className="test-mobile-header-icon"
-                  aria-label="ניקוי חיפוש"
-                  onClick={() => setSearchTerm('')}
-                >
-                  <Search size={26} strokeWidth={2.1} />
-                </button>
-              ) : null}
-              {showAlbumScreen && selectedAlbumFolder ? (
-                <button
-                  type="button"
-                  className="test-mobile-header-icon"
-                  aria-label="חזרה לתיקיות האלבום"
-                  onClick={() => setSelectedAlbumFolderId('')}
-                >
-                  <ArrowRight size={24} strokeWidth={2.1} />
-                </button>
-              ) : null}
-            </>
-          )}
-        </header>
+    const openMobileMemberDrawer = (memberId) => {
+      setSelectedMemberId(memberId);
+      setMobileMemberDrawerOpen(true);
+    };
 
-        <main className="test-mobile-main">
-          {showHomeScreen && (
-            <section className="test-mobile-screen test-mobile-home-screen">
-              <div className="test-mobile-search-wrap test-mobile-home-search">
-                <span className="test-mobile-search-icon">
-                  <Search size={21} strokeWidth={2} />
-                </span>
-                <input
-                  type="search"
-                  className="test-mobile-search-input"
-                  placeholder="חיפוש בן משפחה..."
-                  value={searchTerm}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    setSearchTerm(nextValue);
-                    if (nextValue.trim()) setActiveMenuTab('people');
-                  }}
-                />
-              </div>
+    const renderMobileMemberDrawer = () => {
+      if (!mobileMemberDrawerOpen || !selectedMember) return null;
 
-              <article className="test-mobile-home-updates">
-                <div className="test-mobile-home-updates-head">
-                  <strong>עדכונים</strong>
-                  <button type="button" onClick={() => setActiveMenuTab('updates')}>
-                    לכל העדכונים
-                  </button>
-                </div>
-                {homeEvents.length === 0 ? (
-                  <p className="test-update-empty">אין עדכונים בחודש הנוכחי.</p>
-                ) : (
-                  <div className="test-mobile-home-updates-list">
-                    {homeEvents.map((eventItem) => (
-                      <button
-                        key={eventItem.id}
-                        type="button"
-                        className="test-mobile-home-update-row"
-                        onClick={() => setActiveMenuTab('updates')}
-                      >
-                        <span className="test-mobile-home-update-type">
-                          {eventItem.type === 'birthday' ? 'יום הולדת' : 'יום נישואין'}
-                        </span>
-                        <span className="test-mobile-home-update-name">{eventItem.name}</span>
-                        <small className="test-mobile-home-update-meta">
-                          {toShortDate(eventItem.date)} • {formatInDaysLabel(eventItem.inDays)}
-                        </small>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </article>
-            </section>
-          )}
-
-          {showPeopleScreen && (
-            <section className="test-mobile-screen">
-              <div className="test-mobile-search-wrap">
-                <span className="test-mobile-search-icon">
-                  <Search size={21} strokeWidth={2} />
-                </span>
-                <input
-                  type="search"
-                  className="test-mobile-search-input"
-                  placeholder="חיפוש..."
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-              </div>
-
-              <div className="test-mobile-member-list">
-                {filteredMembers.map((member) => (
-                  <button
-                    key={member.id}
-                    type="button"
-                    className={selectedMemberId === member.id ? 'test-mobile-member-row active' : 'test-mobile-member-row'}
-                    onClick={() => {
-                      setSelectedMemberId(member.id);
-                      setMobileMemberDrawerOpen(true);
-                    }}
-                  >
-                    <span className="test-mobile-avatar">{renderListAvatar(member)}</span>
-                    <span className="test-mobile-member-meta">
-                      <strong>{formatDisplayName(member.name)}</strong>
-                      <small>{mobileParentsSubtitle(member)}</small>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {mobileMemberDrawerOpen && selectedMember ? (
+      return (
                 <div
                   className="test-mobile-member-overlay"
                   role="button"
@@ -641,7 +649,14 @@ export default function AppTestDesktop() {
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="test-mobile-member-drawer-head">
-                      <strong>כרטיס בן משפחה</strong>
+                      <button
+                        type="button"
+                        className="test-mobile-member-drawer-close"
+                        aria-label="סגירת כרטיס בן משפחה"
+                        onClick={() => setMobileMemberDrawerOpen(false)}
+                      >
+                        <X size={22} strokeWidth={2.25} />
+                      </button>
                     </div>
 
                     <div className="test-mobile-member-drawer-profile">
@@ -722,7 +737,210 @@ export default function AppTestDesktop() {
                     </div>
                   </aside>
                 </div>
+      );
+    };
+
+    return (
+      <div className="test-page test-mobile-page" dir="rtl">
+        <header className={showHomeScreen ? 'test-mobile-header test-mobile-header-home' : 'test-mobile-header'}>
+          {showHomeScreen ? (
+            <div className="test-mobile-home-brand">
+              <span className="test-mobile-home-logo" aria-hidden="true">
+                <GitBranch size={24} strokeWidth={2.2} />
+              </span>
+              <div className="test-mobile-home-brand-text">
+                <h1>משפחת כהן</h1>
+                <p>עץ המשפחה שלנו</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1>{mobileHeaderTitle}</h1>
+              {showAlbumScreen && selectedAlbumFolder ? (
+                <button
+                  type="button"
+                  className="test-mobile-header-icon"
+                  aria-label="חזרה לתיקיות האלבום"
+                  onClick={() => setSelectedAlbumFolderId('')}
+                >
+                  <ArrowRight size={24} strokeWidth={2.1} />
+                </button>
               ) : null}
+            </>
+          )}
+        </header>
+
+        <main className={showHomeScreen ? 'test-mobile-main test-mobile-main-home' : 'test-mobile-main'}>
+          {showHomeScreen && (
+            <section className="test-mobile-screen test-mobile-home-screen">
+              <div className="test-mobile-search-wrap test-mobile-home-search">
+                <span className="test-mobile-search-icon">
+                  <Search size={21} strokeWidth={2} />
+                </span>
+                <input
+                  type="search"
+                  className="test-mobile-search-input"
+                  placeholder="חיפוש בן משפחה..."
+                  value={searchTerm}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setSearchTerm(nextValue);
+                    if (nextValue.trim()) setActiveMenuTab('people');
+                  }}
+                />
+              </div>
+
+              <article className="test-mobile-home-updates">
+                <div className="test-mobile-home-updates-head">
+                  <strong>עדכונים</strong>
+                  <button type="button" onClick={() => setActiveMenuTab('updates')}>
+                    לכל העדכונים
+                  </button>
+                </div>
+                {homeEvents.length === 0 ? (
+                  <p className="test-update-empty">אין עדכונים בחודש הנוכחי.</p>
+                ) : (
+                  <div className="test-mobile-home-updates-list">
+                    {homeEvents.map((eventItem) => (
+                      <button
+                        key={eventItem.id}
+                        type="button"
+                        className="test-mobile-home-update-row"
+                        onClick={() => setActiveMenuTab('updates')}
+                      >
+                        <span className="test-mobile-home-update-type">
+                          {eventItem.type === 'birthday' ? 'יום הולדת' : 'יום נישואין'}
+                        </span>
+                        <span className="test-mobile-home-update-name">{formatMobileUpdateName(eventItem)}</span>
+                        <small className="test-mobile-home-update-meta">
+                          {toShortDate(eventItem.date)} • {formatInDaysLabel(eventItem.inDays)}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </article>
+            </section>
+          )}
+
+          {showPeopleScreen && (
+            <section className="test-mobile-screen test-mobile-people-screen">
+              <div className="test-mobile-people-stickybar">
+                <div className="test-mobile-search-wrap">
+                  <span className="test-mobile-search-icon">
+                    <Search size={21} strokeWidth={2} />
+                  </span>
+                  <input
+                    type="search"
+                    className="test-mobile-search-input"
+                    placeholder="חיפוש..."
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                  />
+                </div>
+
+                <div className="test-mobile-people-controls" aria-label="סינון בני משפחה">
+                  <button
+                    type="button"
+                    className="test-mobile-tree-toggle"
+                    aria-label="מעבר למרשם משפחתי"
+                    onClick={() => setActiveMenuTab('tree')}
+                  >
+                    <img className="test-mobile-tree-toggle-icon" src={treeIconUrl} alt="" aria-hidden="true" />
+                  </button>
+                  <div className="test-mobile-generation-filters">
+                    {mobileGenerationFilters.map((filterItem) => (
+                      <button
+                        key={filterItem.id}
+                        type="button"
+                        className={
+                          mobileGenerationFilter === filterItem.id
+                            ? 'test-mobile-generation-filter active'
+                            : 'test-mobile-generation-filter'
+                        }
+                        onClick={() => setMobileGenerationFilter(filterItem.id)}
+                      >
+                        {filterItem.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="test-mobile-member-list">
+                {filteredMembers.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    className={selectedMemberId === member.id ? 'test-mobile-member-row active' : 'test-mobile-member-row'}
+                    onClick={() => openMobileMemberDrawer(member.id)}
+                  >
+                    <span className="test-mobile-avatar">{renderListAvatar(member)}</span>
+                    <span className="test-mobile-member-meta">
+                      <strong>{formatDisplayName(member.name)}</strong>
+                      <small>{mobileParentsSubtitle(member)}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {renderMobileMemberDrawer()}
+            </section>
+          )}
+
+          {showTreeScreen && (
+            <section className="test-mobile-screen test-mobile-tree-screen">
+              <div className="test-mobile-tree-stickybar">
+                <div className="test-mobile-search-wrap test-mobile-tree-search">
+                  <span className="test-mobile-search-icon">
+                    <Search size={21} strokeWidth={2} />
+                  </span>
+                  <input
+                    type="search"
+                    className="test-mobile-search-input"
+                    placeholder="חיפוש..."
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                  />
+                </div>
+
+                <div className="test-mobile-tree-controls" aria-label="בחירת תצוגת עץ">
+                  <button
+                    type="button"
+                    className="test-mobile-tree-toggle"
+                    aria-label="חזרה לרשימת בני המשפחה"
+                    onClick={() => setActiveMenuTab('people')}
+                  >
+                    <img className="test-mobile-tree-toggle-icon" src={listIconUrl} alt="" aria-hidden="true" />
+                  </button>
+                  <div className="test-mobile-tree-view-filters">
+                    {mobileTreeViewFilters.map((filterItem) => (
+                      <button
+                        key={filterItem.id}
+                        type="button"
+                        className={
+                          mobileTreeDiagramMode === filterItem.id
+                            ? 'test-mobile-tree-view-filter active'
+                            : 'test-mobile-tree-view-filter'
+                        }
+                        onClick={() => setMobileTreeDiagramMode(filterItem.id)}
+                      >
+                        {filterItem.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <FamilySchematicDiagram
+                members={treeMembers}
+                selectedMemberId={selectedMemberId}
+                onSelectMember={openMobileMemberDrawer}
+                mobileCompact
+                showViewSwitch={false}
+                diagramMode={mobileTreeDiagramMode}
+                onDiagramModeChange={setMobileTreeDiagramMode}
+              />
+              {renderMobileMemberDrawer()}
             </section>
           )}
 
@@ -737,7 +955,7 @@ export default function AppTestDesktop() {
                     <div className="test-update-group-list">
                       {birthdayEvents.map((eventItem) => (
                         <div key={eventItem.id} className="test-update-row">
-                          <span className="test-update-name">{eventItem.name}</span>
+                          <span className="test-update-name">{formatMobileUpdateName(eventItem)}</span>
                           <small className="test-update-date">{toShortDate(eventItem.date)}</small>
                           <small className="test-update-days">{formatInDaysLabel(eventItem.inDays)}</small>
                         </div>
@@ -754,7 +972,7 @@ export default function AppTestDesktop() {
                     <div className="test-update-group-list">
                       {anniversaryEvents.map((eventItem) => (
                         <div key={eventItem.id} className="test-update-row">
-                          <span className="test-update-name">{eventItem.name}</span>
+                          <span className="test-update-name">{formatMobileUpdateName(eventItem)}</span>
                           <small className="test-update-date">{toShortDate(eventItem.date)}</small>
                           <small className="test-update-days">{formatInDaysLabel(eventItem.inDays)}</small>
                         </div>
@@ -1024,7 +1242,7 @@ export default function AppTestDesktop() {
                       <div className="test-update-group-list">
                         {birthdayEvents.map((eventItem) => (
                           <div key={eventItem.id} className="test-update-row">
-                            <span className="test-update-name">{eventItem.name}</span>
+                            <span className="test-update-name">{formatMobileUpdateName(eventItem)}</span>
                             <small className="test-update-date">{toShortDate(eventItem.date)}</small>
                             <small className="test-update-days">
                               {formatInDaysLabel(eventItem.inDays)}
@@ -1043,7 +1261,7 @@ export default function AppTestDesktop() {
                       <div className="test-update-group-list">
                         {anniversaryEvents.map((eventItem) => (
                           <div key={eventItem.id} className="test-update-row">
-                            <span className="test-update-name">{eventItem.name}</span>
+                            <span className="test-update-name">{formatMobileUpdateName(eventItem)}</span>
                             <small className="test-update-date">{toShortDate(eventItem.date)}</small>
                             <small className="test-update-days">
                               {formatInDaysLabel(eventItem.inDays)}

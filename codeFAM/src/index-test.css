@@ -729,7 +729,7 @@
 }
 
 .test-mobile-home-search {
-  min-height: 54px;
+  min-height: 49px;
   border-radius: 16px;
   padding-inline: 13px;
 }
@@ -820,7 +820,7 @@
   border: 1px solid #dde4ef;
   border-radius: 18px;
   background: #ffffff;
-  min-height: 58px;
+  min-height: 52px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -913,14 +913,23 @@
   height: 60px;
   border: 0;
   border-radius: 999px;
-  background: #000000;
+  background: transparent;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 60px;
   cursor: pointer;
+  padding: 0;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.13);
+}
+
+.test-mobile-tree-toggle-icon {
+  display: block;
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  pointer-events: none;
 }
 
 .test-mobile-generation-filters {
@@ -1078,6 +1087,8 @@
   width: min(88vw, 362px);
   height: 100%;
   border-inline-end: 1px solid #d5deec;
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
   background: #ffffff;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
   transform: translateX(0);
@@ -1090,14 +1101,23 @@
 
 .test-mobile-member-drawer-head {
   border-bottom: 1px solid #dfe6f2;
-  padding: 16px 16px 12px;
-  text-align: right;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-.test-mobile-member-drawer-head strong {
-  color: #1f2937;
-  font-size: 1.28rem;
-  line-height: 1.15;
+.test-mobile-member-drawer-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5fb;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .test-mobile-member-drawer-profile {
