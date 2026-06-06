@@ -270,6 +270,10 @@ function formatMobileUpdateName(eventItem) {
   return eventItem.name;
 }
 
+function formatHomeMonthLabel() {
+  return new Intl.DateTimeFormat('he-IL', { month: 'long', year: 'numeric' }).format(new Date());
+}
+
 function rowSubtitle(member) {
   const relationBits = [];
   if (member.generation !== null && member.generation !== undefined) relationBits.push(`דור ${member.generation}`);
@@ -554,8 +558,17 @@ export default function AppTestDesktop() {
     () => upcomingEvents.filter((eventItem) => eventItem.type === 'anniversary'),
     [upcomingEvents]
   );
-  const homeEvents = useMemo(() => upcomingEvents.slice(0, 6), [upcomingEvents]);
   const albumFolders = STATIC_ALBUM_FOLDERS;
+  const homeAlbumImages = useMemo(() => {
+    return albumFolders
+      .flatMap((folder) => folder.images.map((imageUrl, imageIndex) => ({
+        id: `${folder.id || folder.name}-${imageIndex}`,
+        url: imageUrl,
+        folderName: folder.name,
+      })))
+      .slice(0, 4);
+  }, [albumFolders]);
+  const homeMonthLabel = formatHomeMonthLabel();
   const selectedAlbumFolder = useMemo(() => {
     if (!selectedAlbumFolderId) return null;
     return (
@@ -773,51 +786,98 @@ export default function AppTestDesktop() {
         <main className={showHomeScreen ? 'test-mobile-main test-mobile-main-home' : 'test-mobile-main'}>
           {showHomeScreen && (
             <section className="test-mobile-screen test-mobile-home-screen">
-              <div className="test-mobile-search-wrap test-mobile-home-search">
-                <span className="test-mobile-search-icon">
-                  <Search size={21} strokeWidth={2} />
-                </span>
-                <input
-                  type="search"
-                  className="test-mobile-search-input"
-                  placeholder="חיפוש בן משפחה..."
-                  value={searchTerm}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    setSearchTerm(nextValue);
-                    if (nextValue.trim()) setActiveMenuTab('people');
-                  }}
-                />
-              </div>
+              <article className="test-mobile-home-family-card" aria-label="שם המשפחה">
+                <h1>משפ׳ טל</h1>
+              </article>
 
-              <article className="test-mobile-home-updates">
-                <div className="test-mobile-home-updates-head">
-                  <strong>עדכונים</strong>
-                  <button type="button" onClick={() => setActiveMenuTab('updates')}>
-                    לכל העדכונים
-                  </button>
+              <article className="test-mobile-home-events-card test-mobile-home-birthdays-card">
+                <h2>
+                  <span>ימי הולדת</span>
+                  <small>{homeMonthLabel}</small>
+                </h2>
+
+                <div className="test-mobile-home-events-scroll">
+                  {birthdayEvents.length === 0 ? (
+                    <p className="test-mobile-home-event-empty">אין ימי הולדת בחודש הנוכחי.</p>
+                  ) : (
+                    <div className="test-mobile-home-event-list">
+                      {birthdayEvents.map((eventItem) => (
+                        <button
+                          key={eventItem.id}
+                          type="button"
+                          className="test-mobile-home-event-row"
+                          onClick={() => setActiveMenuTab('updates')}
+                        >
+                          <strong>{formatMobileUpdateName(eventItem)}</strong>
+                          <span>{toShortDate(eventItem.date)}</span>
+                          <small>{formatInDaysLabel(eventItem.inDays)}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {homeEvents.length === 0 ? (
-                  <p className="test-update-empty">אין עדכונים בחודש הנוכחי.</p>
+
+                <button
+                  type="button"
+                  className="test-mobile-home-all-updates"
+                  onClick={() => setActiveMenuTab('updates')}
+                >
+                  לכל העדכונים
+                </button>
+              </article>
+
+              <article className="test-mobile-home-events-card test-mobile-home-anniversaries-card">
+                <h2>
+                  <span>ימי נישואין</span>
+                  <small>{homeMonthLabel}</small>
+                </h2>
+
+                <div className="test-mobile-home-events-scroll">
+                  {anniversaryEvents.length === 0 ? (
+                    <p className="test-mobile-home-event-empty">אין ימי נישואין בחודש הנוכחי.</p>
+                  ) : (
+                    <div className="test-mobile-home-event-list">
+                      {anniversaryEvents.map((eventItem) => (
+                        <button
+                          key={eventItem.id}
+                          type="button"
+                          className="test-mobile-home-event-row"
+                          onClick={() => setActiveMenuTab('updates')}
+                        >
+                          <strong>{formatMobileUpdateName(eventItem)}</strong>
+                          <span>{toShortDate(eventItem.date)}</span>
+                          <small>{formatInDaysLabel(eventItem.inDays)}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="test-mobile-home-photo-card">
+                <h2>תמונות</h2>
+                {homeAlbumImages.length === 0 ? (
+                  <p className="test-mobile-home-event-empty">לא נמצאו תמונות באלבום.</p>
                 ) : (
-                  <div className="test-mobile-home-updates-list">
-                    {homeEvents.map((eventItem) => (
-                      <button
-                        key={eventItem.id}
-                        type="button"
-                        className="test-mobile-home-update-row"
-                        onClick={() => setActiveMenuTab('updates')}
-                      >
-                        <span className="test-mobile-home-update-type">
-                          {eventItem.type === 'birthday' ? 'יום הולדת' : 'יום נישואין'}
-                        </span>
-                        <span className="test-mobile-home-update-name">{formatMobileUpdateName(eventItem)}</span>
-                        <small className="test-mobile-home-update-meta">
-                          {toShortDate(eventItem.date)} • {formatInDaysLabel(eventItem.inDays)}
-                        </small>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="test-mobile-home-photo-carousel" aria-label="קרוסלת תמונות מהאלבום">
+                      {homeAlbumImages.map((imageItem) => (
+                        <button
+                          key={imageItem.id}
+                          type="button"
+                          className="test-mobile-home-photo-slide"
+                          onClick={() => setActiveMenuTab('album')}
+                        >
+                          <img src={imageItem.url} alt={imageItem.folderName} loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="test-mobile-home-photo-dots" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span className="active" />
+                    </div>
+                  </>
                 )}
               </article>
             </section>
