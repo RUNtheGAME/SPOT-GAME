@@ -519,9 +519,9 @@ textarea {
 .schematic-tree {
   --schematic-line-strong: #4f74ad;
   --schematic-line-soft: #94a9cc;
-  border: 1px solid #d8dbe2;
-  border-radius: 14px;
-  background: #f3f4f7;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   padding: 12px;
   display: grid;
   gap: 12px;
@@ -717,9 +717,10 @@ textarea {
 }
 
 .schematic-family-block {
-  border: 1px solid #d7dbe2;
+  border: 1px solid #d8dbe2;
   border-radius: 14px;
-  background: #f7f8fb;
+  background: #f8fafc;
+  box-shadow: 0 8px 18px rgba(67, 74, 90, 0.08);
   padding: 12px;
   display: grid;
   gap: 10px;
@@ -730,6 +731,7 @@ textarea {
   background: transparent;
   box-shadow: none;
 }
+
 
 .schematic-title-wrap {
   display: flex;

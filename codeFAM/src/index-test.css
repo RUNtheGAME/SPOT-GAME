@@ -5,7 +5,7 @@
 
 .test-page {
   min-height: 100vh;
-  background: #eef2f7;
+  background: #faf7f1;
   color: #1f2937;
   font-size: 16px;
   overflow: hidden;
@@ -535,6 +535,7 @@
 }
 
 .test-update-row {
+  width: 100%;
   border: 1px solid #e4eaf3;
   border-radius: 8px;
   background: #fff;
@@ -542,6 +543,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 8px;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
 }
 
 .test-update-name {
@@ -577,7 +581,7 @@
 }
 
 .test-mobile-page {
-  background: #f6f8fc;
+  background: #faf7f1;
   color: #111827;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -643,19 +647,32 @@
 }
 
 .test-mobile-home-family-card {
+  position: relative;
   background: #e6dccd;
   display: grid;
   place-items: center;
-  padding: 12px;
+  padding: 0;
+  overflow: hidden;
 }
 
-.test-mobile-home-family-card h1 {
-  margin: 0;
-  color: #000000;
-  font-size: clamp(1.87rem, 8.5vw, 2.68rem);
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: -0.04em;
+.test-mobile-home-family-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.test-mobile-home-title-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(72%, 316px);
+  max-height: 72%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
 }
 
 .test-mobile-home-events-card {
@@ -787,6 +804,8 @@
   gap: 8px;
   padding: 14px 0 10px;
   overflow: hidden;
+  background: transparent;
+  box-shadow: none;
 }
 
 .test-mobile-home-photo-card h2 {
@@ -1353,6 +1372,10 @@
 }
 
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-family-block {
+  border: 1px solid #d8dbe2;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: 0 8px 18px rgba(67, 74, 90, 0.08);
   padding: 10px 8px;
   gap: 8px;
   overflow: hidden;
@@ -1363,6 +1386,7 @@
   background: transparent;
   box-shadow: none;
 }
+
 
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-family-head,
 .test-mobile-tree-screen .schematic-tree.schematic-mobile-compact .schematic-pair-head,
@@ -1541,17 +1565,22 @@
 
 
 .test-mobile-updates-screen {
+  background: #faf7f1;
   padding-bottom: calc(18px + var(--test-mobile-safe-bottom));
 }
 
 .test-mobile-updates-list {
   display: grid;
   gap: 0;
+  background: #faf7f1;
 }
 
 .test-mobile-updates-screen .test-update-item {
-  border-radius: 14px;
-  padding: 11.4px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 11.4px 0;
 }
 
 .test-mobile-updates-screen .test-update-item strong {

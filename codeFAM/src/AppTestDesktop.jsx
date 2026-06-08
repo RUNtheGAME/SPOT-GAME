@@ -8,6 +8,8 @@ import { applyMemberImageFallbacks, resolveMemberImageUrl } from '@/lib/memberIm
 import { ArrowRight, Bell, Folder, GitBranch, House, Images, MapPinned, MessageCircle, Phone, Search, UserRound, Users, X } from 'lucide-react';
 import treeIconUrl from './assets/tree.svg';
 import listIconUrl from './assets/reshima.svg';
+import mainHomeImageUrl from '../main.png';
+import homeTitleOverlayUrl from './assets/sdsdsd.png';
 
 const LOCAL_MEMBERS_STORAGE_KEY = 'codeTAL2_local_members_v2';
 const LOCAL_MEMBERS_SOURCE_VERSION = 'xlsx_2026_05_17_r2';
@@ -232,6 +234,7 @@ function getUpcomingEvents(members) {
         events.push({
           id: `${member.id}_birthday`,
           type: 'birthday',
+          memberId: member.id,
           name: formatDisplayName(member.name),
           date: birthEventDate,
           inDays: birthInDays,
@@ -252,6 +255,8 @@ function getUpcomingEvents(members) {
         events.push({
           id: `${member.id}_anniversary`,
           type: 'anniversary',
+          memberId: member.id,
+          spouseId: member.spouse_id || '',
           name: `${formatDisplayName(member.name)}${spouseLabel ? ` ו${spouseLabel}` : ''}`,
           date: weddingEventDate,
           inDays: weddingInDays,
@@ -558,6 +563,59 @@ export default function AppTestDesktop() {
     () => upcomingEvents.filter((eventItem) => eventItem.type === 'anniversary'),
     [upcomingEvents]
   );
+  const homeBirthdayEvents = useMemo(() => {
+    return treeMembers
+      .filter((member) => member.generation !== -1 && !member.date_of_death)
+      .map((member) => {
+        const nextBirthdayDate = getNextAnnualDate(member.birth_date);
+        const inDays = diffDays(nextBirthdayDate);
+        if (!nextBirthdayDate || inDays === null || inDays < 0) return null;
+
+        return {
+          id: `${member.id}_home_birthday`,
+          type: 'birthday',
+          memberId: member.id,
+          name: formatDisplayName(member.name),
+          date: nextBirthdayDate,
+          inDays,
+          age: getBirthdayAge(member, nextBirthdayDate),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.date - b.date)
+      .slice(0, 2);
+  }, [treeMembers]);
+  const homeAnniversaryEvents = useMemo(() => {
+    const anniversaryKeys = new Set();
+
+    return treeMembers
+      .filter((member) => member.generation !== -1 && !member.date_of_death)
+      .map((member) => {
+        const nextAnniversaryDate = getNextAnnualDate(member.wedding_date);
+        const inDays = diffDays(nextAnniversaryDate);
+        if (!nextAnniversaryDate || inDays === null || inDays < 0) return null;
+
+        const spouseLabel = member.spouse_name ? formatDisplayName(member.spouse_name) : '';
+        const weddingKey = member.spouse_id
+          ? [member.id, member.spouse_id].sort().join('|')
+          : [formatDisplayName(member.name), spouseLabel].sort().join('|');
+        if (anniversaryKeys.has(weddingKey)) return null;
+        anniversaryKeys.add(weddingKey);
+
+        return {
+          id: `${member.id}_home_anniversary`,
+          type: 'anniversary',
+          memberId: member.id,
+          spouseId: member.spouse_id || '',
+          name: `${formatDisplayName(member.name)}${spouseLabel ? ` ו${spouseLabel}` : ''}`,
+          date: nextAnniversaryDate,
+          inDays,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.date - b.date)
+      .slice(0, 2);
+  }, [treeMembers]);
   const albumFolders = STATIC_ALBUM_FOLDERS;
   const homeAlbumImages = useMemo(() => {
     return albumFolders
@@ -787,21 +845,50 @@ export default function AppTestDesktop() {
           {showHomeScreen && (
             <section className="test-mobile-screen test-mobile-home-screen">
               <article className="test-mobile-home-family-card" aria-label="שם המשפחה">
-                <h1>משפ׳ טל</h1>
+                <img className="test-mobile-home-family-image" src={mainHomeImageUrl} alt="משפחת טל" />
+                <img className="test-mobile-home-title-overlay" src={homeTitleOverlayUrl} alt="" aria-hidden="true" />
               </article>
 
               <article className="test-mobile-home-events-card test-mobile-home-birthdays-card">
                 <h2>
-                  <span>ימי הולדת</span>
-                  <small>{homeMonthLabel}</small>
+                  <span>יום הולדת קרוב</span>
+                  <small>מהיום</small>
                 </h2>
 
                 <div className="test-mobile-home-events-scroll">
-                  {birthdayEvents.length === 0 ? (
-                    <p className="test-mobile-home-event-empty">אין ימי הולדת בחודש הנוכחי.</p>
+                  {homeBirthdayEvents.length === 0 ? (
+                    <p className="test-mobile-home-event-empty">אין ימי הולדת קרובים.</p>
                   ) : (
                     <div className="test-mobile-home-event-list">
-                      {birthdayEvents.map((eventItem) => (
+                      {homeBirthdayEvents.map((eventItem) => (
+                        <button
+                          key={eventItem.id}
+                          type="button"
+                          className="test-mobile-home-event-row"
+                          onClick={() => setActiveMenuTab('updates')}
+                        >
+                          <strong>{formatMobileUpdateName(eventItem)}</strong>
+                          <span>{toShortDate(eventItem.date)}</span>
+                          <small>{formatInDaysLabel(eventItem.inDays)}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="test-mobile-home-events-card test-mobile-home-anniversaries-card">
+                <h2>
+                  <span>יום נישואין קרוב</span>
+                  <small>מהיום</small>
+                </h2>
+
+                <div className="test-mobile-home-events-scroll">
+                  {homeAnniversaryEvents.length === 0 ? (
+                    <p className="test-mobile-home-event-empty">אין ימי נישואין קרובים.</p>
+                  ) : (
+                    <div className="test-mobile-home-event-list">
+                      {homeAnniversaryEvents.map((eventItem) => (
                         <button
                           key={eventItem.id}
                           type="button"
@@ -824,34 +911,6 @@ export default function AppTestDesktop() {
                 >
                   לכל העדכונים
                 </button>
-              </article>
-
-              <article className="test-mobile-home-events-card test-mobile-home-anniversaries-card">
-                <h2>
-                  <span>ימי נישואין</span>
-                  <small>{homeMonthLabel}</small>
-                </h2>
-
-                <div className="test-mobile-home-events-scroll">
-                  {anniversaryEvents.length === 0 ? (
-                    <p className="test-mobile-home-event-empty">אין ימי נישואין בחודש הנוכחי.</p>
-                  ) : (
-                    <div className="test-mobile-home-event-list">
-                      {anniversaryEvents.map((eventItem) => (
-                        <button
-                          key={eventItem.id}
-                          type="button"
-                          className="test-mobile-home-event-row"
-                          onClick={() => setActiveMenuTab('updates')}
-                        >
-                          <strong>{formatMobileUpdateName(eventItem)}</strong>
-                          <span>{toShortDate(eventItem.date)}</span>
-                          <small>{formatInDaysLabel(eventItem.inDays)}</small>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </article>
 
               <article className="test-mobile-home-photo-card">
@@ -1007,18 +1066,23 @@ export default function AppTestDesktop() {
           {showUpdatesScreen && (
             <section className="test-mobile-screen test-mobile-updates-screen">
               <div className="test-mobile-updates-list">
-                <article className="test-update-item">
+                <article className="test-update-item test-update-item-birthdays">
                   <strong>ימי הולדת</strong>
                   {birthdayEvents.length === 0 ? (
                     <p className="test-update-empty">אין ימי הולדת בחודש הנוכחי.</p>
                   ) : (
                     <div className="test-update-group-list">
                       {birthdayEvents.map((eventItem) => (
-                        <div key={eventItem.id} className="test-update-row">
+                        <button
+                          key={eventItem.id}
+                          type="button"
+                          className="test-update-row"
+                          onClick={() => openMobileMemberDrawer(eventItem.memberId)}
+                        >
                           <span className="test-update-name">{formatMobileUpdateName(eventItem)}</span>
                           <small className="test-update-date">{toShortDate(eventItem.date)}</small>
                           <small className="test-update-days">{formatInDaysLabel(eventItem.inDays)}</small>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -1031,16 +1095,23 @@ export default function AppTestDesktop() {
                   ) : (
                     <div className="test-update-group-list">
                       {anniversaryEvents.map((eventItem) => (
-                        <div key={eventItem.id} className="test-update-row">
+                        <button
+                          key={eventItem.id}
+                          type="button"
+                          className="test-update-row"
+                          onClick={() => openMobileMemberDrawer(eventItem.memberId)}
+                        >
                           <span className="test-update-name">{formatMobileUpdateName(eventItem)}</span>
                           <small className="test-update-date">{toShortDate(eventItem.date)}</small>
                           <small className="test-update-days">{formatInDaysLabel(eventItem.inDays)}</small>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
                 </article>
               </div>
+
+              {renderMobileMemberDrawer()}
             </section>
           )}
 
